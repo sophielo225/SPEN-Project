@@ -88,4 +88,25 @@ gse43796_clean = filter(gse43796_clean, MIMAT_ID %in% mutual_MIMAT)
 gse140719_clean = filter(gse140719_clean, MIMAT_ID %in% mutual_MIMAT)
 
 
-# 
+# Perform Mann-Whitney Test and find q-value
+gse43796_result = gse43796_clean %>%
+    group_by(MIMAT_ID) %>%
+    summarize(p_value = wilcox.test(Expression ~ Group)$p.value) %>%
+    mutate(q_value = p.adjust(p_value, method = "BH"))
+
+gse140719_result = gse140719_clean %>%
+    group_by(MIMAT_ID) %>%
+    summarize(p_value = wilcox.test(Expression ~ Group)$p.value) %>%
+    mutate(q_value = p.adjust(p_value, method = "BH"))
+
+# Find statistically significant MIMAT IDs that are in both data sets
+# Set the threshold into 0.05
+gse43796_result %>%
+    filter(q_value < 0.05) %>%
+    pull(MIMAT_ID) -> gse43796_MIMAT_sig
+print(gse43796_MIMAT_sig)
+
+gse140719_result %>%
+    filter(q_value < 0.05) %>%
+    pull(MIMAT_ID) -> gse140719_MIMAT_sig
+print(gse140719_MIMAT_sig)
