@@ -1,15 +1,8 @@
-# Install all required library
-
-if (!requireNamespace("BiocManager", quietly = TRUE))
-    install.packages("BiocManager")
-
-BiocManager::install("GEOquery")
 library(GEOquery)
 library(tidyverse)
 
-# Download GEO Series
-gse43796 = getGEO("GSE43796", GSEMatrix = TRUE)
 gse140719 = getGEO("GSE140719", GSEMatrix = TRUE)
+gse43796 = getGEO("GSE43796", GSEMatrix = TRUE)
 
 # GSE43796
 # Get GSE43796 expression data, metadata, and feature data (probe annotation)
@@ -43,7 +36,7 @@ gse43796_sample_group = gse43796_metadata %>%
 
 # Map sample group to expression data
 gse43796_clean = pivot_longer(gse43796_expression_data, cols = starts_with("GSM"),
-    names_to = "Sample_ID",values_to = "Expression") %>%
+                              names_to = "Sample_ID",values_to = "Expression") %>%
     left_join(gse43796_sample_group, by = "Sample_ID") %>%
     filter(Group == "tumor" | Group == "normal")
 
@@ -68,15 +61,15 @@ gse140719_expression_data = left_join(gse140719_expression_data, gse140719_MIMAT
     rename(MIMAT_ID = Accession) %>%
     select(MIMAT_ID, GSM4182441:GSM4182451)
 
-# Get normal and tumor samples from metadata
+# Get normal and metastatic samples from metadata
 gse140719_sample_group = gse140719_metadata %>% 
-    filter(grepl("LT-localized tumor", title) | grepl("Normal", title)) %>%
-    mutate(Group = if_else(grepl("LT-localized tumor", title), "tumor", "normal")) %>%
+    filter(grepl("MT-Metastatic tumor", title) | grepl("Normal", title)) %>%
+    mutate(Group = if_else(grepl("MT-Metastatic tumor", title), "tumor", "normal")) %>%
     select(Sample_ID, Group)
 
 # Map sample group to expression data
 gse140719_clean = pivot_longer(gse140719_expression_data, cols = starts_with("GSM"),
-                              names_to = "Sample_ID",values_to = "Expression") %>%
+                               names_to = "Sample_ID",values_to = "Expression") %>%
     left_join(gse140719_sample_group, by = "Sample_ID") %>%
     filter(Group == "tumor" | Group == "normal")
 
