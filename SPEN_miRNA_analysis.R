@@ -170,16 +170,18 @@ overlapping_MIMAT_ID = intersect(gse140719_significant_vec, gse43796_significant
 print(overlapping_MIMAT_ID)
 print(length(overlapping_MIMAT_ID))
 
-# Make a scatter plot for all the -log10(p-values) for both data sets
+# Make a scatter plot for all the fold change for both data sets
 gse43796_p_values = gse43796_result %>%
-    mutate(gse43796_log_p = -log10(adj.P.Val)) %>%
+    mutate(gse43796_log_p = logFC) %>%
     select(MIMAT_ID, gse43796_log_p)
 
 gse140719_p_values = gse140719_result %>%
-    mutate(gse140719_log_p = -log10(adj.P.Val)) %>%
+    mutate(gse140719_log_p = logFC) %>%
     select(MIMAT_ID, gse140719_log_p)
 
 merged_p_values <- inner_join(gse43796_p_values, gse140719_p_values, by = "MIMAT_ID")
+
+cor.test(pull(merged_p_values, gse43796_log_p), pull(merged_p_values, gse140719_log_p))
 
 ggplot(merged_p_values, aes(x = gse43796_log_p, y = gse140719_log_p)) +
     geom_point() +
