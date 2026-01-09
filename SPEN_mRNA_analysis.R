@@ -159,9 +159,43 @@ gse43795_significant = gse43795_results %>%
     filter(adj.P.Val < 0.05 & abs(logFC) > 1) %>%
     dplyr::select(Ensembl_ID, logFC, adj.P.Val)
 
-
+########################################
 # E-MEXP-1914
 emexp_1914 = readRDS("E-MEXP-1914.eSet.rds")
+
+# Manually construct it into RGList
+RG <- new("RGList", list(
+    R  = assayData(emexp_1914)$R,
+    G  = assayData(emexp_1914)$G,
+    Rb = assayData(emexp_1914)$Rb,
+    Gb = assayData(emexp_1914)$Gb
+))
+
+RG$genes <- fData(emexp_1914)
+RG$targets <- pData(emexp_1914)
+
+# Background correction
+RG <- backgroundCorrect(RG, method = "normexp", offset = 50)
+
+# Within-array normalization
+MA <- normalizeWithinArrays(RG, method = "loess")
+
+# Between-array normalization
+MA <- normalizeBetweenArrays(MA, method = "Aquantile")
+
+# Build the design matrix
+design <- model.matrix(~ 1, data = data.frame(array = colnames(MA)))
+
+# Fit the model and do differential expression analysis
+fit <- lmFit(MA, design)
+fit <- eBayes(fit)
+emexp_1914_results <- topTable(fit, coef = 1, number = Inf, adjust.method="BH")
+
+# Filter the significant genes
+emexp_1914_significant <- emexp_1914_results %>%
+    as_tibble() %>%
+    filter(adj.P.Val < 0.05 & abs(logFC) > 1) %>%
+    filter(grepl("^ENST", `Composite.Element.Database.Entry.ensembl.`))
 ########################################
 # old script (manually constructed)
 # Download idf, sdrf, and raw files
