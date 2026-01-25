@@ -83,7 +83,7 @@ gse43796_significant = gse43796_result %>%
     filter(abs(logFC) > 1 & adj.P.Val < 0.05)
 
 
-
+#######################################
 # GSE140719 Analysis
 # Load all libraries
 library(oligo)
@@ -163,6 +163,7 @@ gse140719_result <- as_tibble(gse140719_top, rownames = "MIMAT_ID") %>%
 gse140719_significant = gse140719_result %>%
     filter(abs(logFC) > 1 & adj.P.Val < 0.05)
 
+#######################################
 # Get overlapping significant MIMAT IDs
 gse140719_significant_vec = pull(gse140719_significant, MIMAT_ID)
 gse43796_significant_vec = pull(gse43796_significant, MIMAT_ID)
@@ -170,6 +171,20 @@ overlapping_MIMAT_ID = intersect(gse140719_significant_vec, gse43796_significant
 print(overlapping_MIMAT_ID)
 print(length(overlapping_MIMAT_ID))
 
+# Check if overlapping IDs have same trend in both datasets
+gse43796_11IDs = gse43796_significant %>%
+    filter(MIMAT_ID %in% overlapping_MIMAT_ID)  %>%
+    dplyr::rename(gse43796_logFC = logFC) %>%
+    select(MIMAT_ID, gse43796_logFC)
+
+gse140719_11IDs = gse140719_significant %>%
+    filter(MIMAT_ID %in% overlapping_MIMAT_ID)  %>%
+    dplyr::rename(gse140719_logFC = logFC) %>%
+    select(MIMAT_ID, gse140719_logFC)
+
+combined_11IDs = inner_join(gse43796_11IDs, gse140719_11IDs, join_by(MIMAT_ID))
+
+#######################################
 # Make a scatter plot for all the fold change for both data sets
 gse43796_p_values = gse43796_result %>%
     mutate(gse43796_log_p = logFC) %>%
@@ -186,3 +201,19 @@ cor.test(pull(merged_p_values, gse43796_log_p), pull(merged_p_values, gse140719_
 ggplot(merged_p_values, aes(x = gse43796_log_p, y = gse140719_log_p)) +
     geom_point() +
     theme_bw()
+
+#######################################
+# Use multiMiR and miRBaseConverter to map miRNAs to their regulating mRNAs
+# Install required library
+if (!requireNamespace("BiocManager", quietly=TRUE))
+    install.packages("BiocManager")
+
+BiocManager::install(c("multiMiR", "miRBaseConverter"))
+
+library(multiMiR)
+library(miRBaseConverter)
+
+# Convert MIMAT IDs to mature names (e.g., hsa-miR-21-5p)
+miRNA_names <- miRNA_AccessionToName(overlapping_MIMAT_ID, targetVersion = "v22")
+miRNA_targets <- get_multimir(org = "hsa", mirna = miRNA_names$TargetName, table = "all")
+
