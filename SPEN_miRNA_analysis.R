@@ -51,8 +51,8 @@ MA <- MA[MA$genes$ControlType==0, ]
 
 # Map MIMAT IDs to each probe names in MA$genes
 gse43796_MIMAT_ID_REF <- mutate(gse43796_feature_data, MIMAT_ID = str_extract(ACCESSION_STRING, "MIMAT\\d+")) %>%
-    select(ID_REF, MIMAT_ID) %>%
-    rename(ProbeName = ID_REF)
+    dplyr::select(ID_REF, MIMAT_ID) %>%
+    dplyr::rename(ProbeName = ID_REF)
 
 MA$genes <- MA$genes %>%
     left_join(gse43796_MIMAT_ID_REF, by = "ProbeName")
@@ -76,7 +76,7 @@ top <- topTable(fit, coef="grouptumor", number=Inf, adjust.method="BH")
 
 # Convert the result matrix into tibble
 gse43796_result <- as_tibble(top) %>%
-    select(MIMAT_ID, SystematicName, logFC, adj.P.Val)
+    dplyr::select(MIMAT_ID, SystematicName, logFC, adj.P.Val)
 
 # Get the significant IDs (adjusted p-value < 0.05 and fold change > 2)
 gse43796_significant = gse43796_result %>%
@@ -97,11 +97,11 @@ gse140719 = getGEO("GSE140719", GSEMatrix = TRUE)
 gse140719_metadata = pData(gse140719[[1]]) %>%
     as_tibble(rownames = "Sample_ID") %>%
     filter(grepl("localized", title) | grepl("Normal", title)) %>%
-    select(Sample_ID, title)
+    dplyr::select(Sample_ID, title)
 
 gse140719_feature_data = fData(gse140719[[1]]) %>%
     as_tibble(rownames = "ID_REF") %>%
-    select(ID_REF, Accession)
+    dplyr::select(ID_REF, Accession)
 
 # Get CEL files
 gse_id = "GSE140719"
@@ -157,7 +157,7 @@ gse140719_top <- topTable(gse140719_fit, coef="gse140719_grouptumor", number=Inf
 
 # Convert the result matrix into tibble
 gse140719_result <- as_tibble(gse140719_top, rownames = "MIMAT_ID") %>%
-    select(MIMAT_ID, logFC, adj.P.Val)
+    dplyr::select(MIMAT_ID, logFC, adj.P.Val)
 
 # Get the significant IDs (adjusted p-value < 0.05 and fold change > 2)
 gse140719_significant = gse140719_result %>%
@@ -175,12 +175,12 @@ print(length(overlapping_MIMAT_ID))
 gse43796_11IDs = gse43796_significant %>%
     filter(MIMAT_ID %in% overlapping_MIMAT_ID)  %>%
     dplyr::rename(gse43796_logFC = logFC) %>%
-    select(MIMAT_ID, gse43796_logFC)
+    dplyr::select(MIMAT_ID, gse43796_logFC)
 
 gse140719_11IDs = gse140719_significant %>%
     filter(MIMAT_ID %in% overlapping_MIMAT_ID)  %>%
     dplyr::rename(gse140719_logFC = logFC) %>%
-    select(MIMAT_ID, gse140719_logFC)
+    dplyr::select(MIMAT_ID, gse140719_logFC)
 
 combined_11IDs = inner_join(gse43796_11IDs, gse140719_11IDs, join_by(MIMAT_ID))
 
@@ -215,5 +215,33 @@ library(miRBaseConverter)
 
 # Convert MIMAT IDs to mature names (e.g., hsa-miR-21-5p)
 miRNA_names <- miRNA_AccessionToName(overlapping_MIMAT_ID, targetVersion = "v22")
-miRNA_targets <- get_multimir(org = "hsa", mirna = miRNA_names$TargetName, table = "all")
+miRNA_targets <- get_multimir(org = "hsa", mirna = miRNA_names$TargetName, table = "validated")
+target_tibble <- as_tibble(miRNA_targets@data) %>%
+    filter(support_type == "Functional MTI")
 
+target_vec = pull(target_tibble, target_entrez)
+print(length(unique(target_vec))) # Got 304 genes
+
+########################################
+# Compare targets with overlapping mRNA IDs and each data set IDs separately
+# Load significant ID RDS object
+emexp_1914_significant_vec <- readRDS("emexp_1914_significant_vec.rds") # 2540 genes
+gse43795_significant_vec <- readRDS("gse43795_significant_vec.rds") # 4854 genes
+overlapping_Entrez_ID <- readRDS("overlapping_Entrez_ID.rds") # 681 genes
+
+target_vec = unique(target_vec)
+
+# Get overlapping genes between emexp-1914 and targets, named overlapping_1
+overlapping_1 = intersect(target_vec, emexp_1914_significant_vec)
+print(overlapping_1)
+print(length(overlapping_1)) # Got 53
+
+# Get overlapping genes between gse43795 and targets, named overlapping_2
+overlapping_2 = intersect(target_vec, gse43795_significant_vec)
+print(overlapping_2)
+print(length(overlapping_2)) # Got 114
+
+# Get overlapping genes between overlapping_entrez_ID and targets, named overlapping_3
+overlapping_3 = intersect(target_vec, overlapping_Entrez_ID)
+print(overlapping_3)
+print(length(overlapping_3)) # Got 18

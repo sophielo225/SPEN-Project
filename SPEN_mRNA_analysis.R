@@ -110,21 +110,21 @@ exprs_mat <- exprs_mat[signalExprProbes,]
 detP_mat <- detP_mat[signalExprProbes,]
 
 # Depends on the gene IDs we want to use, I've included both Entrez and Ensembl
-probeEnsemblRef <- getRefInfo(annotationPackagePrefix, "ENSEMBL")
+# probeEnsemblRef <- getRefInfo(annotationPackagePrefix, "ENSEMBL")
 probeEntrezRef <- getRefInfo(annotationPackagePrefix, "ENTREZID")
 
-# Map Ensembl gene ID to expression matrix
-ensembl_ids <- probeEnsemblRef$ensembl_id[
-    match(rownames(exprs_mat), probeEnsemblRef$probe_id)
-]
-
-# Map ensembl IDs to expression matrix, and keep illumina probes when there's
-# no ensembl genes annotated
-rownames(exprs_mat) <- ifelse(
-    is.na(ensembl_ids),
-    rownames(exprs_mat),
-    ensembl_ids
-)
+# # Map Ensembl gene ID to expression matrix
+# ensembl_ids <- probeEnsemblRef$ensembl_id[
+#     match(rownames(exprs_mat), probeEnsemblRef$probe_id)
+# ]
+# 
+# # Map ensembl IDs to expression matrix, and keep illumina probes when there's
+# # no ensembl genes annotated
+# rownames(exprs_mat) <- ifelse(
+#     is.na(ensembl_ids),
+#     rownames(exprs_mat),
+#     ensembl_ids
+# )
 
 # Map Entrez IDs to expression matrix
 entrez_ids <- probeEntrezRef$gene_id[
@@ -214,7 +214,7 @@ MA <- normalizeBetweenArrays(MA, method = "Aquantile")
 
 # Map Entrez gene IDs to feature data
 feature_tibble <- rownames_to_column(emexp_1914@featureData@data, var = "ref_num") %>%
-    select(ref_num, `Reporter.Database.Entry.agilent_probe.`)
+    dplyr::select(ref_num, `Reporter.Database.Entry.agilent_probe.`)
 
 # Map Entrez gene IDs to expression matrix
 expression_tibble <- as.data.frame(MA$M) %>%
@@ -222,18 +222,18 @@ expression_tibble <- as.data.frame(MA$M) %>%
 
 # Join expression tibble with probe annotation tibble
 combined_tibble <- inner_join(expression_tibble, feature_tibble, join_by(ref_num)) %>%
-    select(`Reporter.Database.Entry.agilent_probe.`, `Agilent46822-TSPP5`:`Agilent46820-TSPP2`) %>%
-    rename(probe_ID = `Reporter.Database.Entry.agilent_probe.`) %>%
+    dplyr::select(`Reporter.Database.Entry.agilent_probe.`, `Agilent46822-TSPP5`:`Agilent46820-TSPP2`) %>%
+    dplyr::rename(probe_ID = `Reporter.Database.Entry.agilent_probe.`) %>%
     filter(grepl("^A_", probe_ID))
 
 # Map probe-mapped expression tibble with Entrez gene ID
 annotated_tibble <- inner_join(combined_tibble, emexp_1914_probe_annotation, join_by(probe_ID)) %>%
-    select(Entrez_ID, `Agilent46822-TSPP5`:`Agilent46820-TSPP2`)
+    dplyr::select(Entrez_ID, `Agilent46822-TSPP5`:`Agilent46820-TSPP2`)
 
 # Since matrix does not allow duplicate row names, so I exclude Entrez_ID and 
 # convert the tibble back to matrix. In this case, I can do avereps(), since 
 # avereps() does not require row names for the expression matrix
-annotated_expr_mat <- as.matrix(annotated_tibble %>% select(-Entrez_ID))
+annotated_expr_mat <- as.matrix(annotated_tibble %>% dplyr::select(-Entrez_ID))
 expr_gene <- avereps(annotated_expr_mat, ID = annotated_tibble$Entrez_ID)
 
 # Build the design matrix
@@ -254,6 +254,10 @@ emexp_1914_significant_vec = pull(emexp_1914_significant, Entrez_ID)
 gse43795_significant_vec = pull(gse43795_significant, Entrez_ID)
 overlapping_Entrez_ID = intersect(emexp_1914_significant_vec, gse43795_significant_vec)
 print(overlapping_Entrez_ID)
-print(length(overlapping_Entrez_ID))
+print(length(overlapping_Entrez_ID)) # Got 681 genes
 
-###
+#################################
+# Save RDS objects to be used in miRNA file
+saveRDS(emexp_1914_significant_vec, "emexp_1914_significant_vec.rds")
+saveRDS(gse43795_significant_vec, "gse43795_significant_vec.rds")
+saveRDS(overlapping_Entrez_ID, "overlapping_Entrez_ID.rds")
