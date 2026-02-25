@@ -3,16 +3,16 @@ library(GEOquery)
 library(tidyverse)
 library(limma)
 
-# GSE43796
+# Process GSE43796 data set
 # Get metadata and feature data
-gse43796 = getGEO("GSE43796", GSEMatrix = TRUE)
+gse43796 <- getGEO("GSE43796", GSEMatrix = TRUE)
 
-gse43796_metadata = pData(gse43796[[1]]) %>%
+gse43796_metadata <- pData(gse43796[[1]]) %>%
     as_tibble(rownames = "Sample_ID") %>%
     unite(Sample_ID, Sample_ID, description, sep="_") %>%
-    filter(source_name_ch1 == "solid-pseudopapillary neoplasm" | source_name_ch1 == "non-neoplastic pancreas")
+    filter(source_name_ch1 %in% c("solid-pseudopapillary neoplasm", "non-neoplastic pancreas")) 
 
-gse43796_feature_data = fData(gse43796[[1]]) %>%
+gse43796_feature_data <- fData(gse43796[[1]]) %>%
     as_tibble(rownames = "ID_REF")
 
 # Download all supplementary files for the series (includes the .tar raw file)
@@ -27,29 +27,27 @@ untar(tarfile, exdir = "GSE43796/raw_data")
 # Gunzip them if they are compressed
 txt_files <- list.files("GSE43796/raw_data", pattern = "\\.gz$", full.names = TRUE)
 sapply(txt_files, R.utils::gunzip, overwrite=TRUE)
-
 raw_files <- list.files("GSE43796/raw_data", pattern = "\\.txt$", full.names = TRUE)
 
 # Read Agilent one-color arrays
 RG <- read.maimages(raw_files, source="agilent", green.only=TRUE)
 
-# Do normalization
-# 'normexp' is widely used and similar in concept to RMA background correction
+# Perform background correction
 RG_bc <- backgroundCorrect(RG, method="normexp")  
 
-# Normalize between arrays
+# Perform normalization between arrays
 MA <- normalizeBetweenArrays(RG_bc, method="quantile")
 
 # Remove directory names from the column names in the expression matrix
-colnames(MA$E) <- gsub("GSE43796/raw_data/", "", colnames(MA$E))
+colnames(MA$E) <- basename(colnames(MA$E))
 
 # Only keep the samples we care about
 MA <- MA[,pull(gse43796_metadata, Sample_ID)]
 
-# Only keep the regular probes (remove control probes)
+# Only keep regular probes (remove control probes)
 MA <- MA[MA$genes$ControlType==0, ]
 
-# Map MIMAT IDs to each probe names in MA$genes
+# Map MIMAT IDs to each probe name in the expression matrix
 gse43796_MIMAT_ID_REF <- mutate(gse43796_feature_data, MIMAT_ID = str_extract(ACCESSION_STRING, "MIMAT\\d+")) %>%
     dplyr::select(ID_REF, MIMAT_ID) %>%
     dplyr::rename(ProbeName = ID_REF)
@@ -68,7 +66,7 @@ group <- factor(group, levels=c("normal","tumor"))
 # Build the design matrix
 design <- model.matrix(~group)
 
-# Fit the linear model and find DE (differentially expressed) probes
+# Fit the linear model and find differentially expressed probes
 fit <- lmFit(MA_collapse, design)
 fit <- eBayes(fit, trend=TRUE)
 summary(decideTests(fit))
@@ -78,18 +76,18 @@ top <- topTable(fit, coef="grouptumor", number=Inf, adjust.method="BH")
 gse43796_result <- as_tibble(top) %>%
     dplyr::select(MIMAT_ID, SystematicName, logFC, adj.P.Val)
 
-# Get the significant IDs (adjusted p-value < 0.05 and fold change > 2)
+# Get the significant IDs (adjusted p-value < 0.05 and log fold change > 1)
 gse43796_significant = gse43796_result %>%
     filter(abs(logFC) > 1 & adj.P.Val < 0.05)
 
-
 #######################################
-# GSE140719 Analysis
+# Process GSE140719 data set
 # Load all libraries
 library(oligo)
 library(R.utils)
 library(pd.mirna.4.0)
 library(affyio)
+# TODO: figure out where to put the libraries, and maybe add codes of installing different packages
 
 # Get metadata and feature data
 gse140719 = getGEO("GSE140719", GSEMatrix = TRUE)
