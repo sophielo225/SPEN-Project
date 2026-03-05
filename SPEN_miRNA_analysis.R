@@ -1,7 +1,11 @@
+##TODO: Add codes for installing libraries
 # Load all the required libraries
 library(GEOquery)
 library(tidyverse)
 library(limma)
+library(oligo)
+library(R.utils)
+library(pd.mirna.4.0)
 
 # Process GSE43796 data set
 # Get metadata and feature data
@@ -82,39 +86,27 @@ gse43796_significant = gse43796_result %>%
 
 #######################################
 # Process GSE140719 data set
-# Load all libraries
-library(oligo)
-library(R.utils)
-library(pd.mirna.4.0)
-library(affyio)
-# TODO: figure out where to put the libraries, and maybe add codes of installing different packages
-
 # Get metadata and feature data
-gse140719 = getGEO("GSE140719", GSEMatrix = TRUE)
+gse140719 <- getGEO("GSE140719", GSEMatrix = TRUE)
 
-gse140719_metadata = pData(gse140719[[1]]) %>%
+gse140719_metadata <- pData(gse140719[[1]]) %>%
     as_tibble(rownames = "Sample_ID") %>%
-    filter(grepl("localized", title) | grepl("Normal", title)) %>%
+    filter(grepl("localized|Normal", title)) %>%
     dplyr::select(Sample_ID, title)
 
-gse140719_feature_data = fData(gse140719[[1]]) %>%
+gse140719_feature_data <- fData(gse140719[[1]]) %>%
     as_tibble(rownames = "ID_REF") %>%
     dplyr::select(ID_REF, Accession)
 
 # Get CEL files
-gse_id = "GSE140719"
-cel_dir = file.path(gse_id, "CEL")
+gse_id <- "GSE140719"
+cel_dir <- file.path(gse_id, "CEL")
 
 # Unzip all .cel.gz files
-cel_archives = list.files(cel_dir, pattern = "\\.cel\\.gz$", full.names = TRUE)
+cel_archives <- list.files(cel_dir, pattern = "\\.cel\\.gz$", full.names = TRUE)
 for (f in cel_archives) {
-    message("Unzipping: ", basename(f))
-    R.utils::gunzip(f, overwrite = TRUE, remove = TRUE)  # remove the .gz after extraction
+    R.utils::gunzip(f, overwrite = TRUE, remove = TRUE)
 }
-
-# Check results. It should show .cel files 
-list.files(cel_dir)
-
 
 cel_files <- list.celfiles(cel_dir, full.names = TRUE)
 stopifnot(length(cel_files) > 0)
@@ -123,8 +115,8 @@ stopifnot(length(cel_files) > 0)
 raw <- read.celfiles(cel_files, pkgname = "pd.mirna.4.0")
 
 # Background correction + quantile normalization + summarization
-eset <- rma(raw)                  # ExpressionSet
-expr_mat <- Biobase::exprs(eset)  # numeric matrix (features x samples)
+eset <- rma(raw)                  
+expr_mat <- Biobase::exprs(eset)
 
 # Tidy column names of the expression matrix
 colnames(expr_mat) <- gsub("_.*", "", colnames(expr_mat))
@@ -157,38 +149,39 @@ gse140719_top <- topTable(gse140719_fit, coef="gse140719_grouptumor", number=Inf
 gse140719_result <- as_tibble(gse140719_top, rownames = "MIMAT_ID") %>%
     dplyr::select(MIMAT_ID, logFC, adj.P.Val)
 
-# Get the significant IDs (adjusted p-value < 0.05 and fold change > 2)
-gse140719_significant = gse140719_result %>%
+# Get the significant IDs (adjusted p-value < 0.05 and log fold change > 1)
+gse140719_significant <- gse140719_result %>%
     filter(abs(logFC) > 1 & adj.P.Val < 0.05)
 
 #######################################
 # Get overlapping significant MIMAT IDs
-gse140719_significant_vec = pull(gse140719_significant, MIMAT_ID)
-gse43796_significant_vec = pull(gse43796_significant, MIMAT_ID)
-overlapping_MIMAT_ID = intersect(gse140719_significant_vec, gse43796_significant_vec)
+gse140719_significant_vec <- pull(gse140719_significant, MIMAT_ID)
+gse43796_significant_vec <- pull(gse43796_significant, MIMAT_ID)
+overlapping_MIMAT_ID <- intersect(gse140719_significant_vec, gse43796_significant_vec)
 print(overlapping_MIMAT_ID)
 print(length(overlapping_MIMAT_ID))
 
-# Check if overlapping IDs have same trend in both datasets
-gse43796_11IDs = gse43796_significant %>%
+# Check if overlapping IDs have same trend of fold change in both datasets
+gse43796_11IDs <- gse43796_significant %>%
     filter(MIMAT_ID %in% overlapping_MIMAT_ID)  %>%
     dplyr::rename(gse43796_logFC = logFC) %>%
     dplyr::select(MIMAT_ID, gse43796_logFC)
 
-gse140719_11IDs = gse140719_significant %>%
+gse140719_11IDs <- gse140719_significant %>%
     filter(MIMAT_ID %in% overlapping_MIMAT_ID)  %>%
     dplyr::rename(gse140719_logFC = logFC) %>%
     dplyr::select(MIMAT_ID, gse140719_logFC)
 
-combined_11IDs = inner_join(gse43796_11IDs, gse140719_11IDs, join_by(MIMAT_ID))
+combined_11IDs <- inner_join(gse43796_11IDs, gse140719_11IDs, join_by(MIMAT_ID))
 
 #######################################
+## TODO: determine if we still need this chunk of codes
 # Make a scatter plot for all the fold change for both data sets
-gse43796_p_values = gse43796_result %>%
+gse43796_p_values <- gse43796_result %>%
     mutate(gse43796_log_p = logFC) %>%
     select(MIMAT_ID, gse43796_log_p)
 
-gse140719_p_values = gse140719_result %>%
+gse140719_p_values <- gse140719_result %>%
     mutate(gse140719_log_p = logFC) %>%
     select(MIMAT_ID, gse140719_log_p)
 
@@ -201,6 +194,7 @@ ggplot(merged_p_values, aes(x = gse43796_log_p, y = gse140719_log_p)) +
     theme_bw()
 
 #######################################
+## TODO: see if we need to move this to a separate file or other place
 # Use multiMiR and miRBaseConverter to map miRNAs to their regulating mRNAs
 # Install required library
 if (!requireNamespace("BiocManager", quietly=TRUE))
@@ -217,29 +211,28 @@ miRNA_targets <- get_multimir(org = "hsa", mirna = miRNA_names$TargetName, table
 target_tibble <- as_tibble(miRNA_targets@data) %>%
     filter(support_type == "Functional MTI")
 
-target_vec = pull(target_tibble, target_entrez)
+target_vec <- pull(target_tibble, target_entrez)
 print(length(unique(target_vec))) # Got 304 genes
 
-########################################
 # Compare targets with overlapping mRNA IDs and each data set IDs separately
 # Load significant ID RDS object
 emexp_1914_significant_vec <- readRDS("emexp_1914_significant_vec.rds") # 2540 genes
 gse43795_significant_vec <- readRDS("gse43795_significant_vec.rds") # 4854 genes
 overlapping_Entrez_ID <- readRDS("overlapping_Entrez_ID.rds") # 681 genes
 
-target_vec = unique(target_vec)
+target_vec <- unique(target_vec)
 
 # Get overlapping genes between emexp-1914 and targets, named overlapping_1
-overlapping_1 = intersect(target_vec, emexp_1914_significant_vec)
+overlapping_1 <- intersect(target_vec, emexp_1914_significant_vec)
 print(overlapping_1)
 print(length(overlapping_1)) # Got 53
 
 # Get overlapping genes between gse43795 and targets, named overlapping_2
-overlapping_2 = intersect(target_vec, gse43795_significant_vec)
+overlapping_2 <- intersect(target_vec, gse43795_significant_vec)
 print(overlapping_2)
 print(length(overlapping_2)) # Got 114
 
 # Get overlapping genes between overlapping_entrez_ID and targets, named overlapping_3
-overlapping_3 = intersect(target_vec, overlapping_Entrez_ID)
+overlapping_3 <- intersect(target_vec, overlapping_Entrez_ID)
 print(overlapping_3)
 print(length(overlapping_3)) # Got 18

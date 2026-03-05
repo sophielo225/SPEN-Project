@@ -1,27 +1,28 @@
-# This file analyzes two mRNA sequencing data sets(GSE43795, E-MEXP-1914)
-# GSE43795 is from GEO, and E-MEXP-1914 is from ArrayExpress
-
+##TODO: still need to change codes for installing libraries
 # Install needed packages
 if (!requireNamespace("BiocManager", quietly = TRUE))
     install.packages("BiocManager")
 
 BiocManager::install("GEOquery")
 
-# Load libraries
+# Load all the required libraries
 library(GEOquery)
 library(tidyverse)
 library(limma)
 library(R.utils)
+library(illuminaHumanv4.db)
+library(hgug4110b.db)
 
-# GSE43795
+# Process GSE43795 data set
 # Get metadata and feature data
-gse43795 = getGEO("GSE43795", GSEMatrix = TRUE)
+gse43795 <- getGEO("GSE43795", GSEMatrix = TRUE)
 
-gse43795_metadata = pData(gse43795[[1]]) %>%
+gse43795_metadata <- pData(gse43795[[1]]) %>%
     as_tibble(rownames = "Sample_ID") %>%
-    filter(source_name_ch1 == "solid-pseudopapillary neoplasm" | source_name_ch1 == "non-neoplastic pancreas")
+    filter(source_name_ch1 %in% c("solid-pseudopapillary neoplasm",
+                                  "non-neoplastic pancreas"))
 
-gse43795_feature_data = fData(gse43795[[1]]) %>%
+gse43795_feature_data <- fData(gse43795[[1]]) %>%
     as_tibble(rownames = "ID_REF") %>%
     dplyr::select(ID, Entrez_Gene_ID, Symbol)
 
@@ -74,10 +75,8 @@ detP_mat <- detP_mat[, cols_to_keep]
 expressed <- apply(detP_mat < 0.05, 1, any)
 exprs_mat <- exprs_mat[expressed,]
 
-# BiocManager::install("illuminaHumanv4.db")
-library(illuminaHumanv4.db)
-
-# TODO: Move to a better spot?
+##TODO: Move to a better spot?
+# Helper function
 getRefInfo <- function(annotationPackagePrefix, suffix, secondColumnName=NULL) {
     info <- get(paste0(annotationPackagePrefix, suffix))
     info <- info[mappedkeys(info)] # Returns the subset of mapped keys.
@@ -109,30 +108,14 @@ signalExprProbes <- setdiff(signalExprProbes, controlProbes)
 exprs_mat <- exprs_mat[signalExprProbes,]
 detP_mat <- detP_mat[signalExprProbes,]
 
-# Depends on the gene IDs we want to use, I've included both Entrez and Ensembl
-# probeEnsemblRef <- getRefInfo(annotationPackagePrefix, "ENSEMBL")
 probeEntrezRef <- getRefInfo(annotationPackagePrefix, "ENTREZID")
-
-# # Map Ensembl gene ID to expression matrix
-# ensembl_ids <- probeEnsemblRef$ensembl_id[
-#     match(rownames(exprs_mat), probeEnsemblRef$probe_id)
-# ]
-# 
-# # Map ensembl IDs to expression matrix, and keep illumina probes when there's
-# # no ensembl genes annotated
-# rownames(exprs_mat) <- ifelse(
-#     is.na(ensembl_ids),
-#     rownames(exprs_mat),
-#     ensembl_ids
-# )
 
 # Map Entrez IDs to expression matrix
 entrez_ids <- probeEntrezRef$gene_id[
     match(rownames(exprs_mat), probeEntrezRef$probe_id)
 ]
 
-# Map Entrez IDs to expression matrix, and keep illumina probes when there's
-# no Entrez genes annotated
+# Map Entrez IDs to expression matrix, and keep illumina probes when there's no Entrez genes annotated
 rownames(exprs_mat) <- ifelse(
     is.na(entrez_ids),
     rownames(exprs_mat),
@@ -142,9 +125,6 @@ rownames(exprs_mat) <- ifelse(
 # Average duplicate probes through limma avereps()
 gene_ids <- sub("\\.\\d+$", "", rownames(exprs_mat))
 exprs_mat <- avereps(exprs_mat, ID = gene_ids)
-
-# Select only rows that have ensembl gene IDs
-exprs_mat <- exprs_mat[!grepl("^ILMN_", rownames(exprs_mat)), ]
 
 # Select only rows that have Entrez gene IDs
 exprs_mat <- exprs_mat[!grepl("^ILMN_", rownames(exprs_mat)), ]
@@ -168,21 +148,18 @@ summary(decideTests(fit2))
 gse43795_results <- topTable(fit2, number=Inf, adjust.method="BH")
 
 # Keep only significant rows (adj.p < 0.05 and fold change > 1)
-gse43795_significant = gse43795_results %>%
+gse43795_significant <- gse43795_results %>%
     rownames_to_column(var = "Entrez_ID") %>%
     as_tibble() %>%
     filter(adj.P.Val < 0.05 & abs(logFC) > 1) %>%
     dplyr::select(Entrez_ID, logFC, adj.P.Val)
 
 ########################################
-# TODO: Maybe move this to somewhere else
-BiocManager::install("hgug4110b.db")
-library(hgug4110b.db)
-
+# Process E-MEXP-1914 data set
 # E-MEXP-1914
 emexp_1914 = readRDS("E-MEXP-1914.eSet.rds")
 
-## Bimap interface:
+# Get probe annotation through hgug4110b library:
 x <- hgug4110bENTREZID
 # Get the probe identifiers that are mapped to an ENTREZ Gene ID
 mapped_probes <- mappedkeys(x)
@@ -192,7 +169,7 @@ xx <- as.list(x[mapped_probes])
 emexp_1914_probe_annotation <- enframe(xx, name = "probe_ID", value = "Entrez_ID") %>%
     unnest(Entrez_ID)
 
-# Manually construct it into RGList
+# Manually construct E-MEXP-1914 into RGList object
 RG <- new("RGList", list(
     R  = assayData(emexp_1914)$R,
     G  = assayData(emexp_1914)$G,
@@ -204,7 +181,7 @@ RG$genes <- fData(emexp_1914)
 RG$targets <- pData(emexp_1914)
 
 # Background correction
-RG <- backgroundCorrect(RG, method = "normexp", offset = 50)
+RG <- limma::backgroundCorrect(RG, method = "normexp", offset = 50)
 
 # Within-array normalization
 MA <- normalizeWithinArrays(RG, method = "loess")
@@ -230,6 +207,7 @@ combined_tibble <- inner_join(expression_tibble, feature_tibble, join_by(ref_num
 annotated_tibble <- inner_join(combined_tibble, emexp_1914_probe_annotation, join_by(probe_ID)) %>%
     dplyr::select(Entrez_ID, `Agilent46822-TSPP5`:`Agilent46820-TSPP2`)
 
+##TODO: maybe shorten the comments?
 # Since matrix does not allow duplicate row names, so I exclude Entrez_ID and 
 # convert the tibble back to matrix. In this case, I can do avereps(), since 
 # avereps() does not require row names for the expression matrix
@@ -249,12 +227,14 @@ emexp_1914_significant <- emexp_1914_results %>%
     rownames_to_column(var = "Entrez_ID") %>%
     filter(adj.P.Val < 0.05 & abs(logFC) > 1)
 
-# Get overlapping gene IDs from both datasets
-emexp_1914_significant_vec = pull(emexp_1914_significant, Entrez_ID)
-gse43795_significant_vec = pull(gse43795_significant, Entrez_ID)
-overlapping_Entrez_ID = intersect(emexp_1914_significant_vec, gse43795_significant_vec)
+# Get overlapping gene IDs from both data sets
+emexp_1914_significant_vec <- pull(emexp_1914_significant, Entrez_ID)
+gse43795_significant_vec <- pull(gse43795_significant, Entrez_ID)
+overlapping_Entrez_ID <- intersect(emexp_1914_significant_vec, gse43795_significant_vec)
 print(overlapping_Entrez_ID)
 print(length(overlapping_Entrez_ID)) # Got 681 genes
+
+##TODO: add codes that check the fold change signs for overlapping IDs (just like miRNA file)
 
 #################################
 # Save RDS objects to be used in miRNA file
