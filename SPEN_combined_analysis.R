@@ -1,12 +1,19 @@
-# Install required library
-if (!requireNamespace("BiocManager", quietly=TRUE))
+# Install required packages if they are not already installed
+if (!requireNamespace("BiocManager", quietly = TRUE))
     install.packages("BiocManager")
 
-BiocManager::install(c("multiMiR", "miRBaseConverter"))
+# Bioconductor packages
+bioc_packages <- c("multiMiR", "miRBaseConverter")
+for (pkg in bioc_packages) {
+    if (!requireNamespace(pkg, quietly = TRUE)) {
+        BiocManager::install(pkg, ask = FALSE)
+    }
+}
 
 # Use multiMiR and miRBaseConverter to map miRNAs to their regulating mRNAs
 library(multiMiR)
 library(miRBaseConverter)
+library(tidyverse)
 
 # Load significant ID RDS object
 emexp_1914_significant_vec <- readRDS("emexp_1914_significant_vec.rds") # 2540 genes
