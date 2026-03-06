@@ -8,3 +8,8 @@ E-MEXP-1914.sdrf.txt
 .RDataTmp
 GSE43795/
 E-MEXP-1914/
+emexp_1914_significant_vec.rds
+gse43795_significant_vec.rds
+overlapping_Entrez_ID.rds
+overlapping_MIMAT_ID.rds
+same_trend_overlapping_Entrez_ID.rds
