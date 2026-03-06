@@ -75,7 +75,6 @@ detP_mat <- detP_mat[, cols_to_keep]
 expressed <- apply(detP_mat < 0.05, 1, any)
 exprs_mat <- exprs_mat[expressed,]
 
-##TODO: Move to a better spot?
 # Helper function
 getRefInfo <- function(annotationPackagePrefix, suffix, secondColumnName=NULL) {
     info <- get(paste0(annotationPackagePrefix, suffix))
@@ -90,6 +89,7 @@ getRefInfo <- function(annotationPackagePrefix, suffix, secondColumnName=NULL) {
     return(df)
 }
 
+# Keep probes that are perfect or good
 annotationPackagePrefix <- "illuminaHumanv4"
 
 probeQualityRef <- getRefInfo(annotationPackagePrefix, "PROBEQUALITY")
@@ -207,10 +207,7 @@ combined_tibble <- inner_join(expression_tibble, feature_tibble, join_by(ref_num
 annotated_tibble <- inner_join(combined_tibble, emexp_1914_probe_annotation, join_by(probe_ID)) %>%
     dplyr::select(Entrez_ID, `Agilent46822-TSPP5`:`Agilent46820-TSPP2`)
 
-##TODO: maybe shorten the comments?
-# Since matrix does not allow duplicate row names, so I exclude Entrez_ID and 
-# convert the tibble back to matrix. In this case, I can do avereps(), since 
-# avereps() does not require row names for the expression matrix
+# Get mean expression for duplicate genes
 annotated_expr_mat <- as.matrix(annotated_tibble %>% dplyr::select(-Entrez_ID))
 expr_gene <- avereps(annotated_expr_mat, ID = annotated_tibble$Entrez_ID)
 
@@ -227,6 +224,7 @@ emexp_1914_significant <- emexp_1914_results %>%
     rownames_to_column(var = "Entrez_ID") %>%
     filter(adj.P.Val < 0.05 & abs(logFC) > 1)
 
+#################################
 # Get overlapping gene IDs from both data sets
 emexp_1914_significant_vec <- pull(emexp_1914_significant, Entrez_ID)
 gse43795_significant_vec <- pull(gse43795_significant, Entrez_ID)
@@ -234,10 +232,28 @@ overlapping_Entrez_ID <- intersect(emexp_1914_significant_vec, gse43795_signific
 print(overlapping_Entrez_ID)
 print(length(overlapping_Entrez_ID)) # Got 681 genes
 
-##TODO: add codes that check the fold change signs for overlapping IDs (just like miRNA file)
+# Check if overlapping IDs have same trend of fold change in both data sets
+emexp_1914_681IDs <- emexp_1914_significant %>%
+    filter(Entrez_ID %in% overlapping_Entrez_ID)  %>%
+    dplyr::rename(emexp_1914_logFC = logFC) %>%
+    dplyr::select(Entrez_ID, emexp_1914_logFC)
+
+gse43795_681IDs <- gse43795_significant %>%
+    filter(Entrez_ID %in% overlapping_Entrez_ID)  %>%
+    dplyr::rename(gse43795_logFC = logFC) %>%
+    dplyr::select(Entrez_ID, gse43795_logFC)
+
+combined_681IDs <- inner_join(emexp_1914_681IDs, gse43795_681IDs, join_by(Entrez_ID))
+combined_681IDs <- combined_681IDs %>%
+    dplyr::mutate(same_sign = emexp_1914_logFC * gse43795_logFC > 0)
+same_trend_overlapping_Entrez_ID <- combined_681IDs %>%
+    filter(same_sign == TRUE) %>%
+    pull(Entrez_ID)
+print(length(same_trend_overlapping_Entrez_ID)) # Got 336 genes
 
 #################################
-# Save RDS objects to be used in miRNA file
+# Save RDS objects to be used in other files
 saveRDS(emexp_1914_significant_vec, "emexp_1914_significant_vec.rds")
 saveRDS(gse43795_significant_vec, "gse43795_significant_vec.rds")
 saveRDS(overlapping_Entrez_ID, "overlapping_Entrez_ID.rds")
+saveRDS(same_trend_overlapping_Entrez_ID, "same_trend_overlapping_Entrez_ID.rds")

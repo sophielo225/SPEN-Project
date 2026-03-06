@@ -139,7 +139,7 @@ gse140719_group <- factor(gse140719_group, levels = c("normal", "tumor"))
 # Build the design matrix
 gse140719_design <- model.matrix(~gse140719_group)
 
-# Fit the linear model and find DE (differentially expressed) probes
+# Fit the linear model and find differentially expressed probes
 gse140719_fit <- lmFit(expr_mat_mimat, gse140719_design)
 gse140719_fit <- eBayes(gse140719_fit, trend=TRUE)
 summary(decideTests(gse140719_fit))
@@ -161,7 +161,7 @@ overlapping_MIMAT_ID <- intersect(gse140719_significant_vec, gse43796_significan
 print(overlapping_MIMAT_ID)
 print(length(overlapping_MIMAT_ID))
 
-# Check if overlapping IDs have same trend of fold change in both datasets
+# Check if overlapping IDs have same trend of fold change in both data sets
 gse43796_11IDs <- gse43796_significant %>%
     filter(MIMAT_ID %in% overlapping_MIMAT_ID)  %>%
     dplyr::rename(gse43796_logFC = logFC) %>%
@@ -173,6 +173,9 @@ gse140719_11IDs <- gse140719_significant %>%
     dplyr::select(MIMAT_ID, gse140719_logFC)
 
 combined_11IDs <- inner_join(gse43796_11IDs, gse140719_11IDs, join_by(MIMAT_ID))
+
+# Save RDS object to be used in other files
+saveRDS(overlapping_MIMAT_ID, "overlapping_MIMAT_ID.rds")
 
 #######################################
 ## TODO: determine if we still need this chunk of codes
@@ -192,47 +195,3 @@ cor.test(pull(merged_p_values, gse43796_log_p), pull(merged_p_values, gse140719_
 ggplot(merged_p_values, aes(x = gse43796_log_p, y = gse140719_log_p)) +
     geom_point() +
     theme_bw()
-
-#######################################
-## TODO: see if we need to move this to a separate file or other place
-# Use multiMiR and miRBaseConverter to map miRNAs to their regulating mRNAs
-# Install required library
-if (!requireNamespace("BiocManager", quietly=TRUE))
-    install.packages("BiocManager")
-
-BiocManager::install(c("multiMiR", "miRBaseConverter"))
-
-library(multiMiR)
-library(miRBaseConverter)
-
-# Convert MIMAT IDs to mature names (e.g., hsa-miR-21-5p)
-miRNA_names <- miRNA_AccessionToName(overlapping_MIMAT_ID, targetVersion = "v22")
-miRNA_targets <- get_multimir(org = "hsa", mirna = miRNA_names$TargetName, table = "validated")
-target_tibble <- as_tibble(miRNA_targets@data) %>%
-    filter(support_type == "Functional MTI")
-
-target_vec <- pull(target_tibble, target_entrez)
-print(length(unique(target_vec))) # Got 304 genes
-
-# Compare targets with overlapping mRNA IDs and each data set IDs separately
-# Load significant ID RDS object
-emexp_1914_significant_vec <- readRDS("emexp_1914_significant_vec.rds") # 2540 genes
-gse43795_significant_vec <- readRDS("gse43795_significant_vec.rds") # 4854 genes
-overlapping_Entrez_ID <- readRDS("overlapping_Entrez_ID.rds") # 681 genes
-
-target_vec <- unique(target_vec)
-
-# Get overlapping genes between emexp-1914 and targets, named overlapping_1
-overlapping_1 <- intersect(target_vec, emexp_1914_significant_vec)
-print(overlapping_1)
-print(length(overlapping_1)) # Got 53
-
-# Get overlapping genes between gse43795 and targets, named overlapping_2
-overlapping_2 <- intersect(target_vec, gse43795_significant_vec)
-print(overlapping_2)
-print(length(overlapping_2)) # Got 114
-
-# Get overlapping genes between overlapping_entrez_ID and targets, named overlapping_3
-overlapping_3 <- intersect(target_vec, overlapping_Entrez_ID)
-print(overlapping_3)
-print(length(overlapping_3)) # Got 18
