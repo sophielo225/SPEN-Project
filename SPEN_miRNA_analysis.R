@@ -36,7 +36,7 @@ raw_files <- list.files("GSE43796/raw_data", pattern = "\\.txt$", full.names = T
 RG <- read.maimages(raw_files, source="agilent", green.only=TRUE)
 
 # Perform background correction
-RG_bc <- backgroundCorrect(RG, method="normexp")  
+RG_bc <- limma::backgroundCorrect(RG, method="normexp")  
 
 # Perform normalization between arrays
 MA <- normalizeBetweenArrays(RG_bc, method="quantile")
@@ -158,7 +158,7 @@ gse140719_significant_vec <- pull(gse140719_significant, MIMAT_ID)
 gse43796_significant_vec <- pull(gse43796_significant, MIMAT_ID)
 overlapping_MIMAT_ID <- intersect(gse140719_significant_vec, gse43796_significant_vec)
 print(overlapping_MIMAT_ID)
-print(length(overlapping_MIMAT_ID))
+print(length(overlapping_MIMAT_ID)) # 11 overlapping miRNAs
 
 # Check if overlapping IDs have same trend of fold change in both data sets
 gse43796_11IDs <- gse43796_significant %>%
@@ -173,24 +173,16 @@ gse140719_11IDs <- gse140719_significant %>%
 
 combined_11IDs <- inner_join(gse43796_11IDs, gse140719_11IDs, join_by(MIMAT_ID))
 
+# Divide 11 miRNAs into two groups based on the sign of the fold change 
+positive_FC_IDs <- combined_11IDs %>%
+    filter(gse43796_logFC > 0 & gse140719_logFC > 0) %>%
+    pull(MIMAT_ID) # Up-regulated miRNAs
+
+negative_FC_IDs <- combined_11IDs %>%
+    filter(gse43796_logFC < 0 & gse140719_logFC < 0) %>%
+    pull(MIMAT_ID) # Down-regulated miRNAs
+
 # Save RDS object to be used in other files
 saveRDS(overlapping_MIMAT_ID, "overlapping_MIMAT_ID.rds")
-
-#######################################
-## TODO: determine if we still need this chunk of codes
-# Make a scatter plot for all the fold change for both data sets
-gse43796_p_values <- gse43796_result %>%
-    mutate(gse43796_log_p = logFC) %>%
-    select(MIMAT_ID, gse43796_log_p)
-
-gse140719_p_values <- gse140719_result %>%
-    mutate(gse140719_log_p = logFC) %>%
-    select(MIMAT_ID, gse140719_log_p)
-
-merged_p_values <- inner_join(gse43796_p_values, gse140719_p_values, by = "MIMAT_ID")
-
-cor.test(pull(merged_p_values, gse43796_log_p), pull(merged_p_values, gse140719_log_p))
-
-ggplot(merged_p_values, aes(x = gse43796_log_p, y = gse140719_log_p)) +
-    geom_point() +
-    theme_bw()
+saveRDS(positive_FC_IDs, "positive_FC_ID.rds")
+saveRDS(negative_FC_IDs, "negative_FC_ID.rds")
