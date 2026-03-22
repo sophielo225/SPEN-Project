@@ -68,6 +68,7 @@ detP_mat <- detP_mat[, cols_to_keep]
 expressed <- apply(detP_mat < 0.05, 1, any)
 exprs_mat <- exprs_mat[expressed,]
 
+## TODO: from line 73 to 103 are codes that might need more comments to explain them
 # Helper function
 getRefInfo <- function(annotationPackagePrefix, suffix, secondColumnName=NULL) {
     info <- get(paste0(annotationPackagePrefix, suffix))
@@ -250,3 +251,4 @@ saveRDS(emexp_1914_significant_vec, "emexp_1914_significant_vec.rds")
 saveRDS(gse43795_significant_vec, "gse43795_significant_vec.rds")
 saveRDS(overlapping_Entrez_ID, "overlapping_Entrez_ID.rds")
 saveRDS(same_trend_overlapping_Entrez_ID, "same_trend_overlapping_Entrez_ID.rds")
+saveRDS(gse43795_significant, "gse43795_significant_tibble.rds")
