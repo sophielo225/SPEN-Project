@@ -13,3 +13,6 @@ gse43795_significant_vec.rds
 overlapping_Entrez_ID.rds
 overlapping_MIMAT_ID.rds
 same_trend_overlapping_Entrez_ID.rds
+gse43795_significant_tibble.rds
+negative_FC_ID.rds
+positive_FC_ID.rds

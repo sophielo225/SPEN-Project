@@ -12,7 +12,8 @@ for (pkg in cran_packages) {
 
 # Bioconductor packages
 bioc_packages <- c("GEOquery", "limma", "illuminaHumanv4.db", "hgug4110b.db", 
-                   "oligo", "pd.mirna.4.0", "multiMiR", "miRBaseConverter")
+                   "oligo", "pd.mirna.4.0", "multiMiR", "miRBaseConverter",
+                   "EnhancedVolcano")
 for (pkg in bioc_packages) {
     if (!requireNamespace(pkg, quietly = TRUE)) {
         BiocManager::install(pkg, ask = FALSE)
