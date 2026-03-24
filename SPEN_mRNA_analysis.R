@@ -216,7 +216,8 @@ emexp_1914_results <- topTable(fit, coef = 1, number = Inf, adjust.method="BH")
 # Filter the significant genes
 emexp_1914_significant <- emexp_1914_results %>%
     rownames_to_column(var = "Entrez_ID") %>%
-    filter(adj.P.Val < 0.05 & abs(logFC) > 1)
+    filter(adj.P.Val < 0.05 & abs(logFC) > 1) %>%
+    dplyr::select(Entrez_ID, logFC, adj.P.Val)
 
 #################################
 # Get overlapping gene IDs from both data sets
@@ -252,3 +253,5 @@ saveRDS(gse43795_significant_vec, "gse43795_significant_vec.rds")
 saveRDS(overlapping_Entrez_ID, "overlapping_Entrez_ID.rds")
 saveRDS(same_trend_overlapping_Entrez_ID, "same_trend_overlapping_Entrez_ID.rds")
 saveRDS(gse43795_significant, "gse43795_significant_tibble.rds")
+saveRDS(gse43795_results, "gse43795_results_tibble.rds")
+saveRDS(emexp_1914_results, "emexp_1914_results_tibble.rds")
