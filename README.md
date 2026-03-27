@@ -6,10 +6,11 @@ Solid pseudopapillary epithelial neoplasms (SPEN) are rare pancreatic tumors tha
 
 **Information about getting the raw data**
 
-We acquired datasets GSE43795, GSE43796, and GSE140719 directly from Gene Expression Omnibus (GEO). Because of versioning problems, we were unable to use the raw data directly for E-MEXP-1914. We processed it by downloading a binary R object posted on ArrayExpress, importing it into R, and then exporting it to the RDS format. That file is included here and is used in our analyses.
+We acquired datasets [GSE43795](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE43795), [GSE43796](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE43796), and [GSE140719](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE140719) directly from Gene Expression Omnibus (GEO). Because of versioning problems, we were unable to use the raw data directly for [E-MEXP-1914](https://www.ebi.ac.uk/biostudies/ArrayExpress/studies/E-MEXP-1914). We processed it by downloading a binary R object posted on ArrayExpress, importing it into R, and then exporting it to the RDS format. That file is included here and is used in our analyses.
 
 **Instructions on executing the code in this repository**
 
+Please ensure that you install the latest version of [R](https://cran.rstudio.com/) and [RStudio](https://posit.co/download/rstudio-desktop/).
 The code in this repository makes it possible to retrieve, process, and analyze the data from our analysis. To do so, please complete these steps:
 
 1. Run `install.R` to install all the required packages

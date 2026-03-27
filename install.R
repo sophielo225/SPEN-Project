@@ -3,7 +3,7 @@ if (!requireNamespace("BiocManager", quietly = TRUE))
     install.packages("BiocManager")
 
 # CRAN packages
-cran_packages <- c("tidyverse", "R.utils")
+cran_packages <- c("tidyverse", "R.utils", "knitr")
 for (pkg in cran_packages) {
     if (!requireNamespace(pkg, quietly = TRUE)) {
         install.packages(pkg)
@@ -13,7 +13,7 @@ for (pkg in cran_packages) {
 # Bioconductor packages
 bioc_packages <- c("GEOquery", "limma", "illuminaHumanv4.db", "hgug4110b.db", 
                    "oligo", "pd.mirna.4.0", "multiMiR", "miRBaseConverter",
-                   "EnhancedVolcano")
+                   "EnhancedVolcano", "biomaRt")
 for (pkg in bioc_packages) {
     if (!requireNamespace(pkg, quietly = TRUE)) {
         BiocManager::install(pkg, ask = FALSE)
