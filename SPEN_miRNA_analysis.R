@@ -36,7 +36,7 @@ raw_files <- list.files("GSE43796/raw_data", pattern = "\\.txt$", full.names = T
 RG <- read.maimages(raw_files, source="agilent", green.only=TRUE)
 
 # Perform background correction
-RG_bc <- limma::backgroundCorrect(RG, method="normexp")  
+RG_bc <- limma::backgroundCorrect(RG, method="normexp")
 
 # Perform normalization between arrays
 MA <- normalizeBetweenArrays(RG_bc, method="quantile")
@@ -64,7 +64,7 @@ MA_collapse <- avereps(MA, ID=MA$genes$MIMAT_ID)
 # Create the sample group factor
 samples <- colnames(MA_collapse$E)
 group <- ifelse(grepl("_S-", samples), "tumor", "normal")
-group <- factor(group, levels=c("normal","tumor"))
+group <- factor(group, levels=c("normal", "tumor"))
 
 # Build the design matrix
 design <- model.matrix(~group)
@@ -77,16 +77,17 @@ top <- topTable(fit, coef="grouptumor", number=Inf, adjust.method="BH")
 
 # Convert the result matrix into tibble
 gse43796_result <- as_tibble(top) %>%
-    dplyr::select(MIMAT_ID, SystematicName, logFC, adj.P.Val)
+  dplyr::select(MIMAT_ID, SystematicName, logFC, adj.P.Val)
 
-# Get the significant IDs (adjusted p-value < 0.05 and log fold change > 1)
+# Get the significant IDs (adjusted p-value < 0.05 and absolute log fold change > 1)
 gse43796_significant = gse43796_result %>%
     filter(abs(logFC) > 1 & adj.P.Val < 0.05)
 
 #######################################
 # Process GSE140719 data set
 # Get metadata and feature data
-gse140719 <- getGEO("GSE140719", GSEMatrix = TRUE)
+gse_id <- "GSE140719"
+gse140719 <- getGEO(gse_id, GSEMatrix = TRUE)
 
 gse140719_metadata <- pData(gse140719[[1]]) %>%
     as_tibble(rownames = "Sample_ID") %>%
@@ -98,7 +99,6 @@ gse140719_feature_data <- fData(gse140719[[1]]) %>%
     dplyr::select(ID_REF, Accession)
 
 # Get CEL files
-gse_id <- "GSE140719"
 cel_dir <- file.path(gse_id, "CEL")
 
 # Unzip all .cel.gz files

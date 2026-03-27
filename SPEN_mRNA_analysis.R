@@ -68,8 +68,7 @@ detP_mat <- detP_mat[, cols_to_keep]
 expressed <- apply(detP_mat < 0.05, 1, any)
 exprs_mat <- exprs_mat[expressed,]
 
-## TODO: from line 73 to 103 are codes that might need more comments to explain them
-# Helper function
+# Helper function that retrieves annotations from the annotation package.
 getRefInfo <- function(annotationPackagePrefix, suffix, secondColumnName=NULL) {
     info <- get(paste0(annotationPackagePrefix, suffix))
     info <- info[mappedkeys(info)] # Returns the subset of mapped keys.
@@ -83,25 +82,31 @@ getRefInfo <- function(annotationPackagePrefix, suffix, secondColumnName=NULL) {
     return(df)
 }
 
-# Keep probes that are perfect or good
+# We are working with Illumina microarray data.
 annotationPackagePrefix <- "illuminaHumanv4"
 
+# Retrieve annotations regarding probe quality.
 probeQualityRef <- getRefInfo(annotationPackagePrefix, "PROBEQUALITY")
+# Retrieve annotations regarding probe reporter type (what type of control, etc.)
 probeReporterRef <- getRefInfo(annotationPackagePrefix, "REPORTERGROUPNAME", "Probe_Reporter_Type")
 
 controlProbes <- probeReporterRef$Illumina_ID[which(probeReporterRef$Probe_Reporter_Type == "negative")]
 controlProbes <- intersect(controlProbes, rownames(exprs_mat))
 
+# Keep probes that are perfect or good
 perfectProbes <- probeQualityRef$IlluminaID[which(grepl("Perfect", probeQualityRef$ProbeQuality))]
 goodProbes <- probeQualityRef$IlluminaID[which(grepl("Good", probeQualityRef$ProbeQuality))]
 effectiveProbes <- c(perfectProbes, goodProbes)
 
+# Identify which perfect/good probes are not control probes.
 signalExprProbes <- intersect(rownames(exprs_mat), effectiveProbes)
 signalExprProbes <- setdiff(signalExprProbes, controlProbes)
 
+# Retrieve the data for the probes we want to analyze.
 exprs_mat <- exprs_mat[signalExprProbes,]
 detP_mat <- detP_mat[signalExprProbes,]
 
+# Retrieve annotations for gene identifiers.
 probeEntrezRef <- getRefInfo(annotationPackagePrefix, "ENTREZID")
 
 # Map Entrez IDs to expression matrix
@@ -149,8 +154,9 @@ gse43795_significant <- gse43795_results %>%
     dplyr::select(Entrez_ID, logFC, adj.P.Val)
 
 ########################################
-# Process E-MEXP-1914 data set
-# E-MEXP-1914
+# Process E-MEXP-1914 data set. This file is in the GitHub repository.
+# We extracted it from a legacy file on ArrayExpress.
+# The data were generated using Agilent microarrays.
 emexp_1914 = readRDS("E-MEXP-1914.eSet.rds")
 
 # Get probe annotation through hgug4110b library:
