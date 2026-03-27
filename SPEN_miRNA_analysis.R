@@ -98,17 +98,30 @@ gse140719_feature_data <- fData(gse140719[[1]]) %>%
     as_tibble(rownames = "ID_REF") %>%
     dplyr::select(ID_REF, Accession)
 
-# Get CEL files
+# Create directory
 cel_dir <- file.path(gse_id, "CEL")
+if (!dir.exists(cel_dir)) dir.create(cel_dir, recursive = TRUE)
 
-# Unzip all .cel.gz files
-cel_archives <- list.files(cel_dir, pattern = "\\.cel\\.gz$", full.names = TRUE)
+# Download supplementary (raw) files
+getGEOSuppFiles(gse_id, baseDir = cel_dir)
+
+# Find tar files and extract
+tar_files <- list.files(cel_dir, pattern = "\\.tar$", full.names = TRUE, recursive = TRUE)
+
+for (tar in tar_files) {
+    untar(tar, exdir = dirname(tar))  # extract into same folder
+    file.remove(tar)                  # delete tar
+}
+
+# Find gz files and unzip them
+cel_archives <- list.files(cel_dir, pattern = "\\.cel\\.gz$", full.names = TRUE, recursive = TRUE)
+
 for (f in cel_archives) {
     R.utils::gunzip(f, overwrite = TRUE, remove = TRUE)
 }
 
-cel_files <- list.celfiles(cel_dir, full.names = TRUE)
-stopifnot(length(cel_files) > 0)
+# Find CEL files
+cel_files <- list.files(cel_dir, pattern = "\\.cel$", full.names = TRUE, recursive = TRUE)
 
 # Read raw CELs without annotation
 raw <- read.celfiles(cel_files, pkgname = "pd.mirna.4.0")
