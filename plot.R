@@ -3,29 +3,59 @@
 # Load all required library
 library(EnhancedVolcano)
 library(tidyverse)
+library(biomaRt)
 
 # Graph volcano plots for GSE43795 and E-MEXP-1914
 # Load RDS tibbles
-gse43795_results <- readRDS("gse43795_results_tibble.rds")
-emexp_1914_results <- readRDS("emexp_1914_results_tibble.rds")
+gse43795_results <- readRDS("gse43795_results_tibble.rds") %>% rownames_to_column(var = "Entrez_ID")
+emexp_1914_results <- readRDS("emexp_1914_results_tibble.rds") %>% rownames_to_column(var = "Entrez_ID")
 
-top_genes <- rownames(gse43795_results)[order(gse43795_results$adj.P.Val)][1:10] # Only label top genes
+# Map gene symbols to Entrez IDs using biomaRt
+mart <- useEnsembl(biomart = "genes", dataset = "hsapiens_gene_ensembl")
+
+gse43795_gene_map <- getBM(
+    attributes = c("entrezgene_id", "hgnc_symbol"),
+    filters = "entrezgene_id",
+    values = gse43795_results$Entrez_ID,
+    mart = mart
+)
+
+emexp_1914_gene_map <- getBM(
+    attributes = c("entrezgene_id", "hgnc_symbol"),
+    filters = "entrezgene_id",
+    values = emexp_1914_results$Entrez_ID,
+    mart = mart
+)
+
+# Merge gene map to the dataset
+gse43795_gene_map$entrezgene_id <- as.character(gse43795_gene_map$entrezgene_id)
+gse43795_results <- gse43795_results %>%
+    left_join(gse43795_gene_map, by = c("Entrez_ID" = "entrezgene_id"))
+
+emexp_1914_gene_map$entrezgene_id <- as.character(emexp_1914_gene_map$entrezgene_id)
+emexp_1914_results <- emexp_1914_results %>%
+    left_join(emexp_1914_gene_map, by = c("Entrez_ID" = "entrezgene_id"))
+
+# Plot GSE43795
+gse43795_top_genes <- gse43795_results %>%  # Only label top 10 genes by p-value
+    arrange(adj.P.Val) %>%
+    dplyr::slice(1:10) %>%
+    pull(hgnc_symbol)
 
 pdf("Volcano_plot_GSE43795.pdf", width = 10, height = 8)
 EnhancedVolcano(gse43795_results,
-                lab = rownames(gse43795_results),
+                lab = gse43795_results$hgnc_symbol,
                 x = 'logFC',
                 y = 'adj.P.Val',
-                selectLab = top_genes,
+                selectLab = gse43795_top_genes,
                 
                 pCutoff = 0.05,
                 FCcutoff = 1,
                 
                 pointSize = 1.5,
                 labSize = 3,
-                colAlpha = 0.5,
+                colAlpha = 0.3,
                 col = c("grey70", "#56B4E9", "#56B4E9", "#D55E00"),
-                # ylim = c(0, 12),
                 
                 drawConnectors = TRUE,
                 widthConnectors = 0.5,
@@ -37,6 +67,67 @@ EnhancedVolcano(gse43795_results,
 )
 dev.off()
 
+# Plot GSE43795
+gse43795_top_genes <- gse43795_results %>%  # Only label top 10 genes by p-value
+    arrange(adj.P.Val) %>%
+    dplyr::slice(1:10) %>%
+    pull(hgnc_symbol)
+
+pdf("Volcano_plot_GSE43795.pdf", width = 10, height = 8)
+EnhancedVolcano(gse43795_results,
+                lab = gse43795_results$hgnc_symbol,
+                x = 'logFC',
+                y = 'adj.P.Val',
+                selectLab = gse43795_top_genes,
+                
+                pCutoff = 0.05,
+                FCcutoff = 1,
+                
+                pointSize = 1.5,
+                labSize = 3,
+                colAlpha = 0.3,
+                col = c("grey70", "#56B4E9", "#56B4E9", "#D55E00"),
+                
+                drawConnectors = TRUE,
+                widthConnectors = 0.5,
+                max.overlaps = 100,
+                
+                title = 'Volcano Plot for GSE43795',
+                subtitle = 'Differential Expression',
+                caption = 'log2FC cutoff = 1, FDR < 0.05'
+)
+dev.off()
+
+# Plot E-MEXP-1914
+emexp_1914_top_genes <- emexp_1914_results %>%  # Only label top 10 genes by p-value
+    arrange(adj.P.Val) %>%
+    dplyr::slice(1:10) %>%
+    pull(hgnc_symbol)
+
+pdf("Volcano_plot_EMEXP_1914.pdf", width = 10, height = 8)
+EnhancedVolcano(emexp_1914_results,
+                lab = emexp_1914_results$hgnc_symbol,
+                x = 'logFC',
+                y = 'adj.P.Val',
+                selectLab = emexp_1914_top_genes,
+                
+                pCutoff = 0.05,
+                FCcutoff = 1,
+                
+                pointSize = 1.5,
+                labSize = 3,
+                colAlpha = 0.3,
+                col = c("grey70", "#56B4E9", "#56B4E9", "#D55E00"),
+                
+                drawConnectors = TRUE,
+                widthConnectors = 0.5,
+                max.overlaps = 100,
+                
+                title = 'Volcano Plot for E-MEXP-1914',
+                subtitle = 'Differential Expression',
+                caption = 'log2FC cutoff = 1, FDR < 0.05'
+)
+dev.off()
 
 # Make tables for tsv files acquired from GSEA website
 
