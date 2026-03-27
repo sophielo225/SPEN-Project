@@ -4,6 +4,7 @@
 library(EnhancedVolcano)
 library(tidyverse)
 library(biomaRt)
+library(knitr)
 
 #####################################
 # Graph volcano plots for GSE43795 and E-MEXP-1914
@@ -39,7 +40,9 @@ emexp_1914_results <- emexp_1914_results %>%
     left_join(emexp_1914_gene_map, by = c("Entrez_ID" = "entrezgene_id"))
 
 # Create folder for plots
-dir.create("figures")
+if (!dir.exists("figures")) {
+    dir.create("figures")
+}
 
 # Plot GSE43795
 gse43795_top_genes <- gse43795_results %>%  # Only label top 10 genes by p-value
@@ -106,14 +109,24 @@ dev.off()
 #####################################
 # Make tables for tsv files acquired from GSEA website
 
-lines <- readLines("GSEA_result_10_genes.tsv")
+# Helper function that saves tsv files as Markdown texts
+save_tsv_as_md <- function(file_path, out_dir = "tables") {
+    
+    if (!dir.exists(out_dir)) dir.create(out_dir)
+    
+    short_name <- tools::file_path_sans_ext(basename(file_path))
+    
+    lines <- readLines(file_path)
+    start <- grep("Gene/Gene Set Overlap Matrix", lines)
+    matrix_lines <- lines[(start + 2):length(lines)]
+    matrix_lines <- matrix_lines[matrix_lines != ""]
+    
+    df <- read.delim(text = matrix_lines, sep = "\t", header = TRUE)
+    
+    kable(df, format = "simple") %>%
+        writeLines(paste0(out_dir, "/", short_name, "_pathway_results.md"))
+}
 
-# Find where the matrix starts
-start <- grep("Gene/Gene Set Overlap Matrix", lines)
-
-# Extract matrix (skip title + blank line)
-matrix_lines <- lines[(start + 2):length(lines)]
-
-# Read directly from text
-df <- read.delim(text = matrix_lines, sep = "\t", header = TRUE)
-
+# Apply function to all tsv files
+tsv_files <- list.files("pathway_results", pattern = "\\.tsv$", full.names = TRUE)
+lapply(tsv_files, save_tsv_as_md)
