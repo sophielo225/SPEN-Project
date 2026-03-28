@@ -31,6 +31,8 @@ emexp_1914_gene_map <- getBM(
 )
 
 # Merge gene map to the dataset
+# When running these codes, there might be connection errors occurring
+# If this happens, try restarting R session and re-running the codes
 gse43795_gene_map$entrezgene_id <- as.character(gse43795_gene_map$entrezgene_id)
 gse43795_results <- gse43795_results %>%
     left_join(gse43795_gene_map, by = c("Entrez_ID" = "entrezgene_id"))
@@ -62,7 +64,7 @@ EnhancedVolcano(gse43795_results,
                 
                 pointSize = 1.5,
                 labSize = 3,
-                colAlpha = 0.3,
+                colAlpha = 0.2,
                 col = c("grey70", "#56B4E9", "#56B4E9", "#D55E00"),
                 
                 drawConnectors = TRUE,
@@ -93,7 +95,7 @@ EnhancedVolcano(emexp_1914_results,
                 
                 pointSize = 1.5,
                 labSize = 3,
-                colAlpha = 0.3,
+                colAlpha = 0.2,
                 col = c("grey70", "#56B4E9", "#56B4E9", "#D55E00"),
                 
                 drawConnectors = TRUE,
@@ -108,7 +110,7 @@ dev.off()
 
 #####################################
 # Make tables for tsv files acquired from GSEA website
-
+ 
 # Helper function that saves tsv files as Markdown texts
 save_tsv_as_md <- function(file_path, out_dir = "tables") {
     
@@ -122,6 +124,16 @@ save_tsv_as_md <- function(file_path, out_dir = "tables") {
     matrix_lines <- matrix_lines[matrix_lines != ""]
     
     df <- read.delim(text = matrix_lines, sep = "\t", header = TRUE)
+    
+    # Modify the data frame
+    df <- df %>%
+        dplyr::select(-`Gene.Description`) %>%
+        dplyr::rename(Entrez_ID = `Entrez.Gene.Id`) %>%
+        dplyr::rename(Gene_symbol = `Gene.Symbol`) %>%
+        pivot_longer(cols = -c(Entrez_ID, Gene_symbol), names_to = "pathway_type", values_to = "pathway") %>%
+        filter(pathway != "" & !is.na(pathway)) %>%
+        group_by(Entrez_ID, Gene_symbol) %>%
+        dplyr::summarize(Pathway = paste(sort(unique(pathway)), collapse = ", "), .groups = "drop")
     
     kable(df, format = "simple") %>%
         writeLines(paste0(out_dir, "/", short_name, "_pathway_results.md"))

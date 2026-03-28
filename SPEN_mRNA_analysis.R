@@ -252,12 +252,14 @@ same_trend_overlapping_Entrez_ID <- combined_681IDs %>%
     pull(Entrez_ID)
 print(length(same_trend_overlapping_Entrez_ID)) # Got 336 genes
 
+overlapping_336_genes <- combined_681IDs %>%
+    filter(Entrez_ID %in% same_trend_overlapping_Entrez_ID)
 #################################
 # Save RDS objects to be used in other files
 saveRDS(emexp_1914_significant_vec, "emexp_1914_significant_vec.rds")
 saveRDS(gse43795_significant_vec, "gse43795_significant_vec.rds")
-saveRDS(overlapping_Entrez_ID, "overlapping_Entrez_ID.rds")
 saveRDS(same_trend_overlapping_Entrez_ID, "same_trend_overlapping_Entrez_ID.rds")
 saveRDS(gse43795_significant, "gse43795_significant_tibble.rds")
 saveRDS(gse43795_results, "gse43795_results_tibble.rds")
 saveRDS(emexp_1914_results, "emexp_1914_results_tibble.rds")
+saveRDS(overlapping_336_genes, "overlapping_336_genes.rds")
