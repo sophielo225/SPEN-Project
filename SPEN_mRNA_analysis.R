@@ -90,6 +90,7 @@ probeQualityRef <- getRefInfo(annotationPackagePrefix, "PROBEQUALITY")
 # Retrieve annotations regarding probe reporter type (what type of control, etc.)
 probeReporterRef <- getRefInfo(annotationPackagePrefix, "REPORTERGROUPNAME", "Probe_Reporter_Type")
 
+# Identify control probes
 controlProbes <- probeReporterRef$Illumina_ID[which(probeReporterRef$Probe_Reporter_Type == "negative")]
 controlProbes <- intersect(controlProbes, rownames(exprs_mat))
 
