@@ -23,17 +23,17 @@ print(length(unique(target_vec))) # Got 304 target genes
 # Compare targets with overlapping mRNA IDs and each data set IDs separately
 target_vec <- unique(target_vec)
 
-# Get overlapping genes between emexp-1914 and targets, named overlapping_1
+# Get overlapping genes between emexp-1914 and targets
 overlapping_1 <- intersect(target_vec, emexp_1914_significant_vec)
 print(overlapping_1)
 print(length(overlapping_1)) # Got 53
 
-# Get overlapping genes between gse43795 and targets, named overlapping_2
+# Get overlapping genes between gse43795 and targets
 overlapping_2 <- intersect(target_vec, gse43795_significant_vec)
 print(overlapping_2)
 print(length(overlapping_2)) # Got 114
 
-# Get overlapping genes between same_trend_overlapping_Entrez_ID and targets, named overlapping_3
+# Get overlapping genes between same_trend_overlapping_Entrez_ID and targets
 overlapping_3 <- intersect(target_vec, same_trend_overlapping_Entrez_ID)
 print(overlapping_3)
 print(length(overlapping_3)) # Got 10
