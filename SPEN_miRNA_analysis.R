@@ -77,7 +77,7 @@ top <- topTable(fit, coef="grouptumor", number=Inf, adjust.method="BH")
 
 # Convert the result matrix into tibble
 gse43796_result <- as_tibble(top) %>%
-  dplyr::select(MIMAT_ID, SystematicName, logFC, adj.P.Val)
+    dplyr::select(MIMAT_ID, logFC, P.Value, adj.P.Val)
 
 # Get the significant IDs (adjusted p-value < 0.05 and absolute log fold change > 1)
 gse43796_significant = gse43796_result %>%
@@ -158,8 +158,9 @@ summary(decideTests(gse140719_fit))
 gse140719_top <- topTable(gse140719_fit, coef="gse140719_grouptumor", number=Inf, adjust.method="BH")
 
 # Convert the result matrix into tibble
-gse140719_result <- as_tibble(gse140719_top, rownames = "MIMAT_ID") %>%
-    dplyr::select(MIMAT_ID, logFC, adj.P.Val)
+gse140719_result <- gse140719_top %>%
+    rownames_to_column(var = "MIMAT_ID") %>%
+    dplyr::select(MIMAT_ID, logFC, P.Value, adj.P.Val)
 
 # Get the significant IDs (adjusted p-value < 0.05 and log fold change > 1)
 gse140719_significant <- gse140719_result %>%
@@ -194,6 +195,13 @@ positive_FC_IDs <- combined_11IDs %>%
 negative_FC_IDs <- combined_11IDs %>%
     filter(gse43796_logFC < 0 & gse140719_logFC < 0) %>%
     pull(MIMAT_ID) # Down-regulated miRNAs
+
+# Save complete differential expression analysis results to tsv files
+if (!dir.exists("differential_expression_results")) {
+    dir.create("differential_expression_results")
+}
+write_tsv(gse43796_result, "differential_expression_results/gse43796_differential_expression_results.tsv", na = "NA")
+write_tsv(gse140719_result, "differential_expression_results/gse140719_differential_expression_results.tsv", na = "NA")
 
 # Save RDS object to be used in other files
 saveRDS(overlapping_MIMAT_ID, "overlapping_MIMAT_ID.rds")

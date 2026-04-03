@@ -5,6 +5,7 @@ library(limma)
 library(R.utils)
 library(illuminaHumanv4.db)
 library(hgug4110b.db)
+library(biomaRt)
 
 # Process GSE43795 data set
 # Get metadata and feature data
@@ -255,6 +256,49 @@ print(length(same_trend_overlapping_Entrez_ID)) # Got 336 genes
 
 overlapping_336_genes <- combined_681IDs %>%
     filter(Entrez_ID %in% same_trend_overlapping_Entrez_ID)
+
+#################################
+# Save complete differential expression analysis results to tsv files
+
+# Map gene symbols to Entrez IDs using biomaRt
+# When running these codes, there might be connection errors occurring
+# If this happens, try restarting R session and re-running the codes
+mart <- useEnsembl(biomart = "genes", dataset = "hsapiens_gene_ensembl")
+
+gse43795_gene_map <- getBM(
+    attributes = c("entrezgene_id", "hgnc_symbol"),
+    filters = "entrezgene_id",
+    values = gse43795_results$Entrez_ID,
+    mart = mart
+)
+
+emexp_1914_gene_map <- getBM(
+    attributes = c("entrezgene_id", "hgnc_symbol"),
+    filters = "entrezgene_id",
+    values = emexp_1914_results$Entrez_ID,
+    mart = mart
+)
+
+# Merge gene map to the dataset
+gse43795_gene_map$entrezgene_id <- as.character(gse43795_gene_map$entrezgene_id)
+gse43795_results <- gse43795_results %>%
+    rownames_to_column(var = "Entrez_ID") %>%
+    left_join(gse43795_gene_map, by = c("Entrez_ID" = "entrezgene_id")) %>%
+    dplyr::select(Entrez_ID, hgnc_symbol, logFC, P.Value, adj.P.Val)
+
+emexp_1914_gene_map$entrezgene_id <- as.character(emexp_1914_gene_map$entrezgene_id)
+emexp_1914_results <- emexp_1914_results %>%
+    rownames_to_column(var = "Entrez_ID") %>%
+    left_join(emexp_1914_gene_map, by = c("Entrez_ID" = "entrezgene_id")) %>%
+    dplyr::select(Entrez_ID, hgnc_symbol, logFC, P.Value, adj.P.Val)
+
+# Write two result tibbles into tsv files and save them to differential_expression_results folder
+if (!dir.exists("differential_expression_results")) {
+    dir.create("differential_expression_results")
+}
+write_tsv(gse43795_results, "differential_expression_results/gse43795_differential_expression_results.tsv", na = "NA")
+write_tsv(emexp_1914_results, "differential_expression_results/emexp_1914_differential_expression_results.tsv", na = "NA")
+
 #################################
 # Save RDS objects to be used in other files
 saveRDS(emexp_1914_significant_vec, "emexp_1914_significant_vec.rds")

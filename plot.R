@@ -3,43 +3,14 @@
 # Load all required library
 library(EnhancedVolcano)
 library(tidyverse)
-library(biomaRt)
 library(knitr)
 
 #####################################
 # Graph volcano plots for GSE43795 and E-MEXP-1914
 
 # Load RDS tibbles
-gse43795_results <- readRDS("gse43795_results_tibble.rds") %>% rownames_to_column(var = "Entrez_ID")
-emexp_1914_results <- readRDS("emexp_1914_results_tibble.rds") %>% rownames_to_column(var = "Entrez_ID")
-
-# Map gene symbols to Entrez IDs using biomaRt
-mart <- useEnsembl(biomart = "genes", dataset = "hsapiens_gene_ensembl")
-
-gse43795_gene_map <- getBM(
-    attributes = c("entrezgene_id", "hgnc_symbol"),
-    filters = "entrezgene_id",
-    values = gse43795_results$Entrez_ID,
-    mart = mart
-)
-
-emexp_1914_gene_map <- getBM(
-    attributes = c("entrezgene_id", "hgnc_symbol"),
-    filters = "entrezgene_id",
-    values = emexp_1914_results$Entrez_ID,
-    mart = mart
-)
-
-# Merge gene map to the dataset
-# When running these codes, there might be connection errors occurring
-# If this happens, try restarting R session and re-running the codes
-gse43795_gene_map$entrezgene_id <- as.character(gse43795_gene_map$entrezgene_id)
-gse43795_results <- gse43795_results %>%
-    left_join(gse43795_gene_map, by = c("Entrez_ID" = "entrezgene_id"))
-
-emexp_1914_gene_map$entrezgene_id <- as.character(emexp_1914_gene_map$entrezgene_id)
-emexp_1914_results <- emexp_1914_results %>%
-    left_join(emexp_1914_gene_map, by = c("Entrez_ID" = "entrezgene_id"))
+gse43795_results <- readRDS("gse43795_results_tibble.rds")
+emexp_1914_results <- readRDS("emexp_1914_results_tibble.rds")
 
 # Create folder for plots
 if (!dir.exists("figures")) {
