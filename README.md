@@ -17,4 +17,5 @@ The code in this repository makes it possible to retrieve, process, and analyze 
 2. Run `SPEN_miRNA_analysis.R`. It contains code for processing the GSE43796 and GSE140719 datasets (miRNA).
 3. Run `SPEN_mRNA_analysis.R`. It contains code for processing the GSE43795 and E-MEXP-1914 datasets (mRNA).
 4. Run `SPEN_combined_analysis.R`. It contains code for doing the combined analysis for all four datasets.
-5. Run `plot.R` to produce the graphs and tables.
+5. Run `plot.R` to produce the graphs.
+6. Run `reformatGSEA.R` to produce the tables.
