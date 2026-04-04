@@ -13,24 +13,33 @@ save_tsv_as_md <- function(file_path, out_dir = "tables") {
     
     short_name <- tools::file_path_sans_ext(basename(file_path))
     
+    # Read lines
     lines <- readLines(file_path)
-    start <- grep("Gene/Gene Set Overlap Matrix", lines)
-    matrix_lines <- lines[(start + 2):length(lines)]
-    matrix_lines <- matrix_lines[matrix_lines != ""]
+    result_lines <- lines[10:20]
+    result_df <- read_tsv(paste(result_lines, collapse = "\n"))
+    matrix_df <- read_tsv(file_path, skip = 24)
     
-    df <- read.delim(text = matrix_lines, sep = "\t", header = TRUE)
+    # Convert overlap matrix to long format
+    matrix_long <- matrix_df %>%
+        pivot_longer(cols = -(c(`Entrez Gene Id`, `Gene Symbol`, `Gene Description`)),
+            names_to = "GeneSet", values_to = "Present") %>%
+        filter(!is.na(Present) & Present != "")
     
-    # Modify the data frame
-    df <- df %>%
-        dplyr::select(-`Gene.Description`) %>%
-        dplyr::rename(Entrez_ID = `Entrez.Gene.Id`) %>%
-        dplyr::rename(Gene_symbol = `Gene.Symbol`) %>%
-        pivot_longer(cols = -c(Entrez_ID, Gene_symbol), names_to = "pathway_type", values_to = "pathway") %>%
-        filter(pathway != "" & !is.na(pathway)) %>%
-        group_by(Entrez_ID, Gene_symbol) %>%
-        dplyr::summarize(Pathway = paste(sort(unique(pathway)), collapse = ", "), .groups = "drop")
+    # Collapse gene symbols per gene set
+    gene_lists <- matrix_long %>%
+        group_by(GeneSet) %>%
+        dplyr::summarize(Gene_Symbols = paste(`Gene Symbol`, collapse = ", "), .groups = "drop")
     
-    kable(df, format = "simple") %>%
+    # Join with overlap summary table
+    final_table <- result_df %>%
+        dplyr::select(`Gene Set Name`, `p-value`, `FDR q-value`) %>%
+        left_join(gene_lists, by = c("Gene Set Name" = "GeneSet")) %>%
+        dplyr::rename(Gene_Set_Name = `Gene Set Name`) %>%
+        dplyr::rename(FDR_q_value = `FDR q-value`) %>%
+        dplyr::rename(p_value = `p-value`)
+    
+    # Write the table into markdown text
+    kable(final_table, format = "simple", digits = 30) %>%
         writeLines(paste0(out_dir, "/", short_name, "_pathway_results.md"))
 }
 
