@@ -264,7 +264,7 @@ overlapping_336_genes <- combined_681IDs %>%
 # Map gene symbols to Entrez IDs using biomaRt
 # When running these codes, there might be connection errors occurring
 # If this happens, try restarting R session and re-running the codes
-mart <- useEnsembl(biomart = "genes", dataset = "hsapiens_gene_ensembl")
+mart <- useEnsembl(biomart = "genes", dataset = "hsapiens_gene_ensembl", mirror = "useast")
 
 gse43795_gene_map <- getBM(
     attributes = c("entrezgene_id", "hgnc_symbol"),
