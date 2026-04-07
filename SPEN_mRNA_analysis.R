@@ -254,6 +254,7 @@ same_trend_overlapping_Entrez_ID <- combined_681IDs %>%
     pull(Entrez_ID)
 print(length(same_trend_overlapping_Entrez_ID)) # Got 336 genes
 
+# These 336 genes overlap between both mRNA datasets and have same sign of fold changes across both datasets
 overlapping_336_genes <- combined_681IDs %>%
     filter(Entrez_ID %in% same_trend_overlapping_Entrez_ID)
 
