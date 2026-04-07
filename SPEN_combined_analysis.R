@@ -33,23 +33,14 @@ overlapping_2 <- intersect(target_vec, gse43795_significant_vec)
 print(overlapping_2)
 print(length(overlapping_2)) # Got 114
 # These 114 genes' Entrez IDs were passed in to do gene-set enrichment analysis
-<<<<<<< HEAD
 # The resulting tsv file is called "GSEA_result_114_genes.tsv" and saved under "pathway_results" folder
-=======
-# The resulted tsv file is called "GSEA_result_114_genes.tsv" and saved under "pathway_results" folder
->>>>>>> 6afc58709e31c15b4a6574b5883541e5d2a04845
-
 
 # Get overlapping genes between same_trend_overlapping_Entrez_ID and targets
 overlapping_3 <- intersect(target_vec, same_trend_overlapping_Entrez_ID)
 print(overlapping_3)
 print(length(overlapping_3)) # Got 10
 # These 10 genes' Entrez IDs were passed in to do gene-set enrichment analysis
-<<<<<<< HEAD
 # The resulting tsv file is called "GSEA_result_10_genes.tsv" and saved under "pathway_results" folder
-=======
-# The resulted tsv file is called "GSEA_result_10_genes.tsv" and saved under "pathway_results" folder
->>>>>>> 6afc58709e31c15b4a6574b5883541e5d2a04845
 
 ########################################
 # Expected directionality analysis
@@ -98,11 +89,7 @@ gse43795_negative_FC_gene <- gse43795_significant %>%
 print(gse43795_negative_FC_gene)
 print(length(gse43795_negative_FC_gene)) # Got 36 target genes that are down-regulated
 # These 36 genes' Entrez IDs were passed in to do gene-set enrichment analysis
-<<<<<<< HEAD
 # The resulting tsv file is called "gse43795_negative_FC_GSEA_result.tsv" and saved under "pathway_results" folder
-=======
-# The resulted tsv file is called "gse43795_negative_FC_GSEA_result.tsv" and saved under "pathway_results" folder
->>>>>>> 6afc58709e31c15b4a6574b5883541e5d2a04845
 
 gse43795_positive_FC_gene <- gse43795_significant %>%
     filter(Entrez_ID %in% gse43795_positive_overlapping_gene & logFC > 0) %>%
@@ -110,11 +97,7 @@ gse43795_positive_FC_gene <- gse43795_significant %>%
 print(gse43795_positive_FC_gene)
 print(length(gse43795_positive_FC_gene)) # Got 34 target genes that are up-regulated
 # These 34 genes' Entrez IDs were passed in to do gene-set enrichment analysis
-<<<<<<< HEAD
 # The resulting tsv file is called "gse43795_positive_FC_GSEA_result.tsv" and saved under "pathway_results" folder
-=======
-# The resulted tsv file is called "gse43795_positive_FC_GSEA_result.tsv" and saved under "pathway_results" folder
->>>>>>> 6afc58709e31c15b4a6574b5883541e5d2a04845
 
 # Compare those target mRNAs to overlapping genes that have same trend between GSE43795 and E-MEXP-1914
 both_dataset_negative_overlapping_gene <- intersect(negative_target_vec, same_trend_overlapping_Entrez_ID)
