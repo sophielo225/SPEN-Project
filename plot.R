@@ -26,7 +26,7 @@ gse43795_top_genes_df <- gse43795_results %>%
     arrange(rank_avg)
 
 gse43795_top_genes <- gse43795_top_genes_df %>%
-    dplyr::slice(1:15) %>%  # Only label top 15 genes
+    dplyr::slice(1:20) %>%  # Only label top 20 genes
     pull(hgnc_symbol)
 
 pdf("figures/Volcano_plot_GSE43795.pdf", width = 10, height = 8)
@@ -65,7 +65,7 @@ emexp_1914_top_genes_df <- emexp_1914_results %>%
     arrange(rank_avg)
 
 emexp_1914_top_genes <- emexp_1914_top_genes_df %>%
-    dplyr::slice(1:15) %>%  # Only label top 15 genes
+    dplyr::slice(1:20) %>%  # Only label top 20 genes
     pull(hgnc_symbol)
 
 pdf("figures/Volcano_plot_EMEXP_1914.pdf", width = 10, height = 8)

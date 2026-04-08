@@ -269,14 +269,14 @@ mart <- useEnsembl(biomart = "genes", dataset = "hsapiens_gene_ensembl", mirror 
 gse43795_gene_map <- getBM(
     attributes = c("entrezgene_id", "hgnc_symbol"),
     filters = "entrezgene_id",
-    values = gse43795_results$Entrez_ID,
+    values = rownames(gse43795_results),
     mart = mart
 )
 
 emexp_1914_gene_map <- getBM(
     attributes = c("entrezgene_id", "hgnc_symbol"),
     filters = "entrezgene_id",
-    values = emexp_1914_results$Entrez_ID,
+    values = rownames(emexp_1914_results),
     mart = mart
 )
 
