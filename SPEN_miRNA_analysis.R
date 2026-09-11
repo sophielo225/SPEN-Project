@@ -8,12 +8,12 @@ library(pd.mirna.4.0)
 
 # Process GSE43796 data set
 # Get metadata and feature data
-gse43796 <- getGEO("GSE43796", GSEMatrix = TRUE)
+gse43796 <- getGEO("GSE43796", GSEMatrix = TRUE, destdir = tempdir())
 
 gse43796_metadata <- pData(gse43796[[1]]) %>%
-    as_tibble(rownames = "Sample_ID") %>%
-    unite(Sample_ID, Sample_ID, description, sep="_") %>%
-    filter(source_name_ch1 %in% c("solid-pseudopapillary neoplasm", "non-neoplastic pancreas")) 
+  as_tibble(rownames = "Sample_ID") %>%
+  unite(Sample_ID, Sample_ID, description, sep = "_") %>%
+  filter(source_name_ch1 %in% c("solid-pseudopapillary neoplasm", "non-neoplastic pancreas"))
 
 gse43796_feature_data <- fData(gse43796[[1]]) %>%
     as_tibble(rownames = "ID_REF")
@@ -100,7 +100,8 @@ gse140719_feature_data <- fData(gse140719[[1]]) %>%
 
 # Create directory
 cel_dir <- file.path(gse_id, "CEL")
-if (!dir.exists(cel_dir)) dir.create(cel_dir, recursive = TRUE)
+if (!dir.exists(cel_dir))
+  dir.create(cel_dir, recursive = TRUE)
 
 # Download supplementary (raw) files
 getGEOSuppFiles(gse_id, baseDir = cel_dir)
