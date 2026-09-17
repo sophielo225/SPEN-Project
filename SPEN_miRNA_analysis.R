@@ -15,6 +15,8 @@ gse43796_metadata <- pData(gse43796[[1]]) %>%
   unite(Sample_ID, Sample_ID, description, sep = "_") %>%
   filter(source_name_ch1 %in% c("solid-pseudopapillary neoplasm", "non-neoplastic pancreas"))
 
+# GSM1071400 is titled SPN-14, but the metadata says ductal carcinoma
+
 gse43796_feature_data <- fData(gse43796[[1]]) %>%
     as_tibble(rownames = "ID_REF")
 

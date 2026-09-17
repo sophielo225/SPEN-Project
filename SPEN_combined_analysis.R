@@ -84,16 +84,16 @@ gse43795_negative_overlapping_gene <- intersect(negative_target_vec, gse43795_si
 gse43795_positive_overlapping_gene <- intersect(positive_target_vec, gse43795_significant_vec)
 
 gse43795_negative_FC_gene <- gse43795_significant %>%
-    filter(Entrez_ID %in% gse43795_negative_overlapping_gene & logFC < 0) %>%
-    pull(Entrez_ID)
+    filter(Entrez_Gene_ID %in% gse43795_negative_overlapping_gene & logFC < 0) %>%
+    pull(Entrez_Gene_ID)
 print(gse43795_negative_FC_gene)
 print(length(gse43795_negative_FC_gene)) # Got 36 target genes that are down-regulated
 # These 36 genes' Entrez IDs were passed in to do gene-set enrichment analysis
 # The resulting tsv file is called "gse43795_negative_FC_GSEA_result.tsv" and saved under "pathway_results" folder
 
 gse43795_positive_FC_gene <- gse43795_significant %>%
-    filter(Entrez_ID %in% gse43795_positive_overlapping_gene & logFC > 0) %>%
-    pull(Entrez_ID)
+    filter(Entrez_Gene_ID %in% gse43795_positive_overlapping_gene & logFC > 0) %>%
+    pull(Entrez_Gene_ID)
 print(gse43795_positive_FC_gene)
 print(length(gse43795_positive_FC_gene)) # Got 34 target genes that are up-regulated
 # These 34 genes' Entrez IDs were passed in to do gene-set enrichment analysis
@@ -104,14 +104,14 @@ both_dataset_negative_overlapping_gene <- intersect(negative_target_vec, same_tr
 both_dataset_positive_overlapping_gene <- intersect(positive_target_vec, same_trend_overlapping_Entrez_ID)
 
 both_dataset_negative_FC_gene <- overlapping_336_genes %>%
-    filter(Entrez_ID %in% both_dataset_negative_overlapping_gene & gse43795_logFC < 0) %>%
-    pull(Entrez_ID)
+    filter(Entrez_Gene_ID %in% both_dataset_negative_overlapping_gene & gse43795_logFC < 0) %>%
+    pull(Entrez_Gene_ID)
 print(both_dataset_negative_FC_gene)
 print(length(both_dataset_negative_FC_gene)) # Got 1 target genes that are down-regulated
 
 both_dataset_positive_FC_gene <- overlapping_336_genes %>%
-    filter(Entrez_ID %in% both_dataset_positive_overlapping_gene & gse43795_logFC > 0) %>%
-    pull(Entrez_ID)
+    filter(Entrez_Gene_ID %in% both_dataset_positive_overlapping_gene & gse43795_logFC > 0) %>%
+    pull(Entrez_Gene_ID)
 print(both_dataset_positive_FC_gene)
 print(length(both_dataset_positive_FC_gene)) # Got 5 target genes that are up-regulated
 # These 5 genes' Entrez IDs were passed in to do gene-set enrichment analysis

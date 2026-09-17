@@ -8,7 +8,6 @@ library(knitr)
 
 # Helper function that saves tsv files as Markdown texts
 save_tsv_as_md <- function(file_path, out_dir = "tables") {
-    
     if (!dir.exists(out_dir)) dir.create(out_dir)
     
     short_name <- tools::file_path_sans_ext(basename(file_path))

@@ -27,11 +27,11 @@ gse43795_top_genes_df <- gse43795_results %>%
 
 gse43795_top_genes <- gse43795_top_genes_df %>%
     dplyr::slice(1:20) %>%  # Only label top 20 genes
-    pull(hgnc_symbol)
+    pull(HGNC_Symbol)
 
 pdf("figures/Volcano_plot_GSE43795.pdf", width = 10, height = 8)
 EnhancedVolcano(gse43795_results,
-                lab = gse43795_results$hgnc_symbol,
+                lab = gse43795_results$HGNC_Symbol,
                 x = 'logFC',
                 y = 'adj.P.Val',
                 selectLab = gse43795_top_genes,
@@ -66,11 +66,11 @@ emexp_1914_top_genes_df <- emexp_1914_results %>%
 
 emexp_1914_top_genes <- emexp_1914_top_genes_df %>%
     dplyr::slice(1:20) %>%  # Only label top 20 genes
-    pull(hgnc_symbol)
+    pull(HGNC_Symbol)
 
 pdf("figures/Volcano_plot_EMEXP_1914.pdf", width = 10, height = 8)
 EnhancedVolcano(emexp_1914_results,
-                lab = emexp_1914_results$hgnc_symbol,
+                lab = emexp_1914_results$HGNC_Symbol,
                 x = 'logFC',
                 y = 'adj.P.Val',
                 selectLab = emexp_1914_top_genes,
