@@ -128,7 +128,7 @@ cel_files <- list.files(cel_dir, pattern = "\\.cel$", full.names = TRUE, recursi
 raw <- read.celfiles(cel_files, pkgname = "pd.mirna.4.0")
 
 # Background correction + quantile normalization + summarization
-eset <- rma(raw)                  
+eset <- rma(raw)
 expr_mat <- Biobase::exprs(eset)
 
 # Tidy column names of the expression matrix
