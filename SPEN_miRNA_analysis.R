@@ -10,12 +10,22 @@ library(pd.mirna.4.0)
 # Get metadata and feature data
 gse43796 <- getGEO("GSE43796", GSEMatrix = TRUE, destdir = tempdir())
 
-gse43796_metadata <- pData(gse43796[[1]]) %>%
+gse43796_eset <- lapply(gse43796, function(x) {
+  if (is(x, "SummarizedExperiment")) {
+    as(x, "ExpressionSet")
+  } else {
+    x
+  }
+})
+
+gse43796_metadata <- pData(gse43796_eset[[1]]) %>%
   as_tibble(rownames = "Sample_ID") %>%
   unite(Sample_ID, Sample_ID, description, sep = "_") %>%
   filter(source_name_ch1 %in% c("solid-pseudopapillary neoplasm", "non-neoplastic pancreas"))
 
-gse43796_feature_data <- fData(gse43796[[1]]) %>%
+# GSM1071400 is titled SPN-14, but the metadata says ductal carcinoma
+
+gse43796_feature_data <- fData(gse43796_eset[[1]]) %>%
     as_tibble(rownames = "ID_REF")
 
 # Download all supplementary files for the series (includes the .tar raw file)
@@ -89,12 +99,20 @@ gse43796_significant = gse43796_result %>%
 gse_id <- "GSE140719"
 gse140719 <- getGEO(gse_id, GSEMatrix = TRUE)
 
-gse140719_metadata <- pData(gse140719[[1]]) %>%
+gse140719_eset <- lapply(gse140719, function(x) {
+  if (is(x, "SummarizedExperiment")) {
+    as(x, "ExpressionSet")
+  } else {
+    x
+  }
+})
+
+gse140719_metadata <- pData(gse140719_eset[[1]]) %>%
     as_tibble(rownames = "Sample_ID") %>%
     filter(grepl("localized|Normal", title)) %>%
     dplyr::select(Sample_ID, title)
 
-gse140719_feature_data <- fData(gse140719[[1]]) %>%
+gse140719_feature_data <- fData(gse140719_eset[[1]]) %>%
     as_tibble(rownames = "ID_REF") %>%
     dplyr::select(ID_REF, Accession)
 
@@ -191,11 +209,11 @@ combined_11IDs <- inner_join(gse43796_11IDs, gse140719_11IDs, join_by(MIMAT_ID))
 # Divide 11 miRNAs into two groups based on the sign of the fold change 
 positive_FC_IDs <- combined_11IDs %>%
     filter(gse43796_logFC > 0 & gse140719_logFC > 0) %>%
-    pull(MIMAT_ID) # Up-regulated miRNAs
+    pull(MIMAT_ID) # Up-regulated miRNAs (n = 6)
 
 negative_FC_IDs <- combined_11IDs %>%
     filter(gse43796_logFC < 0 & gse140719_logFC < 0) %>%
-    pull(MIMAT_ID) # Down-regulated miRNAs
+    pull(MIMAT_ID) # Down-regulated miRNAs (n = 5)
 
 # Save complete differential expression analysis results to tsv files
 if (!dir.exists("differential_expression_results")) {

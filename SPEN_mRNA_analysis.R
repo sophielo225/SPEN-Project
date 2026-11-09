@@ -11,12 +11,21 @@ library(biomaRt)
 # Get metadata and feature data
 gse43795 <- getGEO("GSE43795", GSEMatrix = TRUE)
 
-gse43795_metadata <- pData(gse43795[[1]]) %>%
-    as_tibble(rownames = "Sample_ID") %>%
-    filter(source_name_ch1 %in% c("solid-pseudopapillary neoplasm",
-                                  "non-neoplastic pancreas"))
+gse43795_eset <- lapply(gse43795, function(x) {
+  if (is(x, "SummarizedExperiment")) {
+    as(x, "ExpressionSet")
+  } else {
+    x
+  }
+})
 
-gse43795_feature_data <- fData(gse43795[[1]]) %>%
+gse43795_metadata <- pData(gse43795_eset[[1]]) %>%
+    as_tibble(rownames = "Sample_ID") %>%
+    filter(source_name_ch1 %in% c("solid-pseudopapillary neoplasm", "non-neoplastic pancreas"))
+
+# GSM1071369 is titled SPN-14, but the metadata says ductal carcinoma
+
+gse43795_feature_data <- fData(gse43795_eset[[1]]) %>%
     as_tibble(rownames = "ID_REF") %>%
     dplyr::select(ID, Entrez_Gene_ID, Symbol)
 
@@ -146,14 +155,14 @@ contrast_matrix <- makeContrasts(tumor - normal, levels=design)
 fit2 <- contrasts.fit(fit, contrast_matrix)
 fit2 <- eBayes(fit2)
 summary(decideTests(fit2))
-gse43795_results <- topTable(fit2, number=Inf, adjust.method="BH")
+gse43795_results <- topTable(fit2, number=Inf, adjust.method="BH") %>%
+  rownames_to_column("Entrez_Gene_ID") %>%
+  mutate(Entrez_Gene_ID = as.integer(Entrez_Gene_ID))
 
 # Keep only significant rows (adj.p < 0.05 and fold change > 1)
 gse43795_significant <- gse43795_results %>%
-    rownames_to_column(var = "Entrez_ID") %>%
-    as_tibble() %>%
     filter(adj.P.Val < 0.05 & abs(logFC) > 1) %>%
-    dplyr::select(Entrez_ID, logFC, adj.P.Val)
+    dplyr::select(Entrez_Gene_ID, logFC, adj.P.Val)
 
 ########################################
 # Process E-MEXP-1914 data set. This file is in the GitHub repository.
@@ -219,79 +228,95 @@ design <- model.matrix(~ 1, data = data.frame(array = colnames(expr_gene)))
 # Fit the model and do differential expression analysis
 fit <- lmFit(expr_gene, design)
 fit <- eBayes(fit)
-emexp_1914_results <- topTable(fit, coef = 1, number = Inf, adjust.method="BH")
+emexp_1914_results <- topTable(fit, coef = 1, number = Inf, adjust.method="BH")  %>%
+  rownames_to_column("Entrez_Gene_ID") %>%
+  mutate(Entrez_Gene_ID = as.integer(Entrez_Gene_ID))
 
 # Filter the significant genes
 emexp_1914_significant <- emexp_1914_results %>%
-    rownames_to_column(var = "Entrez_ID") %>%
     filter(adj.P.Val < 0.05 & abs(logFC) > 1) %>%
-    dplyr::select(Entrez_ID, logFC, adj.P.Val)
+    dplyr::select(Entrez_Gene_ID, logFC, adj.P.Val)
 
 #################################
 # Get overlapping gene IDs from both data sets
-emexp_1914_significant_vec <- pull(emexp_1914_significant, Entrez_ID)
-gse43795_significant_vec <- pull(gse43795_significant, Entrez_ID)
+emexp_1914_significant_vec <- pull(emexp_1914_significant, Entrez_Gene_ID)
+gse43795_significant_vec <- pull(gse43795_significant, Entrez_Gene_ID)
 overlapping_Entrez_ID <- intersect(emexp_1914_significant_vec, gse43795_significant_vec)
 print(overlapping_Entrez_ID)
 print(length(overlapping_Entrez_ID)) # Got 681 genes
 
 # Check if overlapping IDs have same trend of fold change in both data sets
 emexp_1914_681IDs <- emexp_1914_significant %>%
-    filter(Entrez_ID %in% overlapping_Entrez_ID)  %>%
+    filter(Entrez_Gene_ID %in% overlapping_Entrez_ID)  %>%
     dplyr::rename(emexp_1914_logFC = logFC) %>%
-    dplyr::select(Entrez_ID, emexp_1914_logFC)
+    dplyr::select(Entrez_Gene_ID, emexp_1914_logFC)
 
 gse43795_681IDs <- gse43795_significant %>%
-    filter(Entrez_ID %in% overlapping_Entrez_ID)  %>%
+    filter(Entrez_Gene_ID %in% overlapping_Entrez_ID)  %>%
     dplyr::rename(gse43795_logFC = logFC) %>%
-    dplyr::select(Entrez_ID, gse43795_logFC)
+    dplyr::select(Entrez_Gene_ID, gse43795_logFC)
 
-combined_681IDs <- inner_join(emexp_1914_681IDs, gse43795_681IDs, join_by(Entrez_ID))
+combined_681IDs <- inner_join(emexp_1914_681IDs, gse43795_681IDs, join_by(Entrez_Gene_ID))
 combined_681IDs <- combined_681IDs %>%
-    dplyr::mutate(same_sign = emexp_1914_logFC * gse43795_logFC > 0)
+    dplyr::mutate(same_sign = (emexp_1914_logFC > 1 & gse43795_logFC > 1) | (emexp_1914_logFC < -1 & gse43795_logFC < -1))
+
 same_trend_overlapping_Entrez_ID <- combined_681IDs %>%
     filter(same_sign == TRUE) %>%
-    pull(Entrez_ID)
+    pull(Entrez_Gene_ID)
 print(length(same_trend_overlapping_Entrez_ID)) # Got 336 genes
 
 # These 336 genes overlap between both mRNA datasets and have same sign of fold changes across both datasets
 overlapping_336_genes <- combined_681IDs %>%
-    filter(Entrez_ID %in% same_trend_overlapping_Entrez_ID)
+    filter(Entrez_Gene_ID %in% same_trend_overlapping_Entrez_ID)
 
 #################################
-# Save complete differential expression analysis results to tsv files
+# Map gene symbols to Entrez IDs using HGNC mappings.
 
-# Map gene symbols to Entrez IDs using biomaRt
-# When running these codes, there might be connection errors occurring
-# If this happens, try restarting R session and re-running the codes
-mart <- useEnsembl(biomart = "genes", dataset = "hsapiens_gene_ensembl", mirror = "useast")
+download.file("https://zenodo.org/records/20549560/files/HGNC_mappings.tsv.gz?download=1", "/tmp/gene_mappings.tsv.gz")
+gene_annotations <- read_tsv("/tmp/gene_mappings.tsv.gz", comment = "#") %>%
+  dplyr::rename(Entrez_Gene_ID = `NCBI gene ID`,
+                HGNC_Symbol = `Approved symbol`) %>%
+  filter(!is.na(Entrez_Gene_ID)) %>%
+  filter(!is.na(HGNC_Symbol)) %>%
+  mutate(Entrez_Gene_ID = as.integer(Entrez_Gene_ID)) %>%
+  dplyr::select(Entrez_Gene_ID, HGNC_Symbol)
 
-gse43795_gene_map <- getBM(
-    attributes = c("entrezgene_id", "hgnc_symbol"),
-    filters = "entrezgene_id",
-    values = rownames(gse43795_results),
-    mart = mart
-)
+# # When running these codes, there might be connection errors occurring
+# # If this happens, try restarting R session and re-running the codes
+# mart <- useEnsembl(biomart = "genes", dataset = "hsapiens_gene_ensembl", mirror = "useast")
+# 
+# gse43795_gene_map <- getBM(
+#     attributes = c("entrezgene_id", "hgnc_symbol"),
+#     filters = "entrezgene_id",
+#     values = rownames(gse43795_results),
+#     mart = mart
+# )
+# 
+# emexp_1914_gene_map <- getBM(
+#     attributes = c("entrezgene_id", "hgnc_symbol"),
+#     filters = "entrezgene_id",
+#     values = rownames(emexp_1914_results),
+#     mart = mart
+# )
 
-emexp_1914_gene_map <- getBM(
-    attributes = c("entrezgene_id", "hgnc_symbol"),
-    filters = "entrezgene_id",
-    values = rownames(emexp_1914_results),
-    mart = mart
-)
+gse43795_results <- left_join(gse43795_results, gene_annotations) %>%
+  dplyr::select(Entrez_Gene_ID, HGNC_Symbol, logFC, P.Value, adj.P.Val)
+
+emexp_1914_results <- left_join(emexp_1914_results, gene_annotations) %>%
+  dplyr::select(Entrez_Gene_ID, HGNC_Symbol, logFC, P.Value, adj.P.Val)
 
 # Merge gene map to the dataset
-gse43795_gene_map$entrezgene_id <- as.character(gse43795_gene_map$entrezgene_id)
-gse43795_results <- gse43795_results %>%
-    rownames_to_column(var = "Entrez_ID") %>%
-    left_join(gse43795_gene_map, by = c("Entrez_ID" = "entrezgene_id")) %>%
-    dplyr::select(Entrez_ID, hgnc_symbol, logFC, P.Value, adj.P.Val)
-
-emexp_1914_gene_map$entrezgene_id <- as.character(emexp_1914_gene_map$entrezgene_id)
-emexp_1914_results <- emexp_1914_results %>%
-    rownames_to_column(var = "Entrez_ID") %>%
-    left_join(emexp_1914_gene_map, by = c("Entrez_ID" = "entrezgene_id")) %>%
-    dplyr::select(Entrez_ID, hgnc_symbol, logFC, P.Value, adj.P.Val)
+# gse43795_gene_map$entrezgene_id <- as.character(gse43795_gene_map$entrezgene_id)
+# gse43795_results <- gse43795_results %>%
+#     rownames_to_column(var = "Entrez_ID") %>%
+#     left_join(gse43795_gene_map, by = c("Entrez_ID" = "entrezgene_id")) %>%
+#     dplyr::select(Entrez_ID, hgnc_symbol, logFC, P.Value, adj.P.Val)
+# 
+# emexp_1914_gene_map$entrezgene_id <- as.character(emexp_1914_gene_map$entrezgene_id)
+# emexp_1914_results <- emexp_1914_results %>%
+#     rownames_to_column(var = "Entrez_ID") %>%
+#     left_join(emexp_1914_gene_map, by = c("Entrez_ID" = "entrezgene_id")) %>%
+#     dplyr::select(Entrez_ID, hgnc_symbol, logFC, P.Value, adj.P.Val)
 
 # Write two result tibbles into tsv files and save them to differential_expression_results folder
 if (!dir.exists("differential_expression_results")) {
@@ -307,5 +332,6 @@ saveRDS(gse43795_significant_vec, "gse43795_significant_vec.rds")
 saveRDS(same_trend_overlapping_Entrez_ID, "same_trend_overlapping_Entrez_ID.rds")
 saveRDS(gse43795_significant, "gse43795_significant_tibble.rds")
 saveRDS(gse43795_results, "gse43795_results_tibble.rds")
+saveRDS(emexp_1914_significant, "emexp_1914_significant_tibble.rds")
 saveRDS(emexp_1914_results, "emexp_1914_results_tibble.rds")
 saveRDS(overlapping_336_genes, "overlapping_336_genes.rds")

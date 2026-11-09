@@ -17,28 +17,30 @@ miRNA_targets <- get_multimir(org = "hsa", mirna = miRNA_names$TargetName, table
 target_tibble <- as_tibble(miRNA_targets@data) %>%
     filter(support_type == "Functional MTI")
 
-target_vec <- pull(target_tibble, target_entrez)
+target_genes = dplyr::select(target_tibble, target_symbol, target_entrez) %>%
+  distinct()
+target_vec <- pull(target_genes, target_entrez)
 print(length(unique(target_vec))) # Got 304 target genes
 
 # Compare targets with overlapping mRNA IDs and each data set IDs separately
-target_vec <- unique(target_vec)
+target_vec <- unique(target_vec) # n = 304
 
 # Get overlapping genes between emexp-1914 and targets
 overlapping_1 <- intersect(target_vec, emexp_1914_significant_vec)
 print(overlapping_1)
-print(length(overlapping_1)) # Got 53
+print(length(overlapping_1)) # Got 53 (out of 2,540)
 
 # Get overlapping genes between gse43795 and targets
 overlapping_2 <- intersect(target_vec, gse43795_significant_vec)
 print(overlapping_2)
-print(length(overlapping_2)) # Got 114
+print(length(overlapping_2)) # Got 114 (out of 4,854)
 # These 114 genes' Entrez IDs were passed in to do gene-set enrichment analysis
 # The resulting tsv file is called "GSEA_result_114_genes.tsv" and saved under "pathway_results" folder
 
 # Get overlapping genes between same_trend_overlapping_Entrez_ID and targets
 overlapping_3 <- intersect(target_vec, same_trend_overlapping_Entrez_ID)
 print(overlapping_3)
-print(length(overlapping_3)) # Got 10
+print(length(overlapping_3)) # Got 10 (out of 681)
 # These 10 genes' Entrez IDs were passed in to do gene-set enrichment analysis
 # The resulting tsv file is called "GSEA_result_10_genes.tsv" and saved under "pathway_results" folder
 
@@ -53,6 +55,7 @@ positive_FC_IDs <- readRDS("positive_FC_ID.rds")
 negative_FC_IDs <- readRDS("negative_FC_ID.rds")
 gse43795_significant_vec <- readRDS("gse43795_significant_vec.rds")
 gse43795_significant <- readRDS("gse43795_significant_tibble.rds")
+emexp_1914_significant <- readRDS("emexp_1914_significant_tibble.rds")
 overlapping_336_genes <- readRDS("overlapping_336_genes.rds")
 
 # Convert Convert MIMAT IDs to mature names
@@ -64,55 +67,80 @@ negative_FC_miRNA <- miRNA_names %>%
     filter(Accession %in% negative_FC_IDs) %>%
     pull(TargetName)
 
-# Get each miRNA group's target mRNA
-positive_miRNA_targets <- get_multimir(org = "hsa", mirna = positive_FC_miRNA, table = "validated")
-positive_target_tibble <- as_tibble(positive_miRNA_targets@data) %>%
-    filter(support_type == "Functional MTI")
-
-negative_miRNA_targets <- get_multimir(org = "hsa", mirna = negative_FC_miRNA, table = "validated")
-negative_target_tibble <- as_tibble(negative_miRNA_targets@data) %>%
-    filter(support_type == "Functional MTI")
-
-negative_target_vec <- unique(pull(positive_target_tibble, target_entrez))
-print(length(negative_target_vec)) # Got 191 genes that should be down-regulated
-
-positive_target_vec <- unique(pull(negative_target_tibble, target_entrez))
-print(length(positive_target_vec)) # Got 132 genes that should be up-regulated
-
-# Compare those target mRNAs to GSE43795 data set
-gse43795_negative_overlapping_gene <- intersect(negative_target_vec, gse43795_significant_vec)
-gse43795_positive_overlapping_gene <- intersect(positive_target_vec, gse43795_significant_vec)
+gse43795_positive_FC_gene <- gse43795_significant %>%
+  filter(logFC > 1) %>%
+  pull(Entrez_Gene_ID) # 2754
 
 gse43795_negative_FC_gene <- gse43795_significant %>%
-    filter(Entrez_ID %in% gse43795_negative_overlapping_gene & logFC < 0) %>%
-    pull(Entrez_ID)
-print(gse43795_negative_FC_gene)
-print(length(gse43795_negative_FC_gene)) # Got 36 target genes that are down-regulated
+  filter(logFC < -1) %>%
+  pull(Entrez_Gene_ID) # 2100
+
+emexp_1914_positive_FC_gene <- emexp_1914_significant %>%
+  filter(logFC > 1) %>%
+  pull(Entrez_Gene_ID) # 1419
+
+emexp_1914_negative_FC_gene <- emexp_1914_significant %>%
+  filter(logFC < -1) %>%
+  pull(Entrez_Gene_ID) # 1121
+
+both_mRNA_positive_FC_gene <- intersect(gse43795_positive_FC_gene, emexp_1914_positive_FC_gene) # 187
+
+both_mRNA_negative_FC_gene <- intersect(gse43795_negative_FC_gene, emexp_1914_negative_FC_gene) # 149
+
+miRNA_targets <- get_multimir(org = "hsa", mirna = c(positive_FC_miRNA, negative_FC_miRNA), table = "validated")
+miRNA_targets <- as_tibble(miRNA_targets@data) %>%
+  filter(support_type == "Functional MTI") %>%
+  distinct(mature_mirna_id, target_symbol, target_entrez) # 351
+
+positive_miRNA_targets <- filter(miRNA_targets, mature_mirna_id %in% positive_FC_miRNA) %>%
+  pull(target_entrez) %>%
+  unique() # 191 target genes that should be, in theory, but they may not be in our differentally expressed gene list.
+
+negative_miRNA_targets <- filter(miRNA_targets, mature_mirna_id %in% negative_FC_miRNA) %>%
+  pull(target_entrez) %>%
+  unique() # 132 target genes that should, in theory, be downregulated, but they may not be in our differentially expressed gene list.
+
+intersect(gse43795_positive_FC_gene, c(positive_miRNA_targets, negative_miRNA_targets)) %>%
+  length() # 59 all relationships
+intersect(gse43795_positive_FC_gene, negative_miRNA_targets) %>%
+  length() # 34 positive inverse/expected
+intersect(gse43795_positive_FC_gene, positive_miRNA_targets) %>%
+  length() # 28 positive same
+intersect(gse43795_negative_FC_gene, positive_miRNA_targets) %>%
+  length() # 36 negative inverse/expected
+intersect(gse43795_negative_FC_gene, negative_miRNA_targets) %>%
+  length() # 22 negative same
+
+intersect(both_mRNA_positive_FC_gene, c(positive_miRNA_targets, negative_miRNA_targets)) %>%
+  length() # 7 all relationships
+intersect(both_mRNA_positive_FC_gene, negative_miRNA_targets) %>%
+  length() # 5 positive inverse/expected
+intersect(both_mRNA_positive_FC_gene, positive_miRNA_targets) %>%
+  length() # 2 positive same
+intersect(both_mRNA_negative_FC_gene, positive_miRNA_targets) %>%
+  length() # 1 negative inverse/expected
+intersect(both_mRNA_negative_FC_gene, negative_miRNA_targets) %>%
+  length() # 2 negative same
+
+gse43795_positive_inverse_genes <- intersect(gse43795_positive_FC_gene, negative_miRNA_targets)
+print(gse43795_positive_inverse_genes)
+
 # These 36 genes' Entrez IDs were passed in to do gene-set enrichment analysis
 # The resulting tsv file is called "gse43795_negative_FC_GSEA_result.tsv" and saved under "pathway_results" folder
 
-gse43795_positive_FC_gene <- gse43795_significant %>%
-    filter(Entrez_ID %in% gse43795_positive_overlapping_gene & logFC > 0) %>%
-    pull(Entrez_ID)
-print(gse43795_positive_FC_gene)
-print(length(gse43795_positive_FC_gene)) # Got 34 target genes that are up-regulated
+gse43795_negative_inverse_genes <- intersect(gse43795_negative_FC_gene, positive_miRNA_targets)
+print(gse43795_negative_inverse_genes)
+
 # These 34 genes' Entrez IDs were passed in to do gene-set enrichment analysis
 # The resulting tsv file is called "gse43795_positive_FC_GSEA_result.tsv" and saved under "pathway_results" folder
 
-# Compare those target mRNAs to overlapping genes that have same trend between GSE43795 and E-MEXP-1914
-both_dataset_negative_overlapping_gene <- intersect(negative_target_vec, same_trend_overlapping_Entrez_ID)
-both_dataset_positive_overlapping_gene <- intersect(positive_target_vec, same_trend_overlapping_Entrez_ID)
+both_mRNA_positive_inverse_genes <- intersect(both_mRNA_positive_FC_gene, negative_miRNA_targets)
+print(both_mRNA_positive_inverse_genes)
 
-both_dataset_negative_FC_gene <- overlapping_336_genes %>%
-    filter(Entrez_ID %in% both_dataset_negative_overlapping_gene & gse43795_logFC < 0) %>%
-    pull(Entrez_ID)
-print(both_dataset_negative_FC_gene)
-print(length(both_dataset_negative_FC_gene)) # Got 1 target genes that are down-regulated
-
-both_dataset_positive_FC_gene <- overlapping_336_genes %>%
-    filter(Entrez_ID %in% both_dataset_positive_overlapping_gene & gse43795_logFC > 0) %>%
-    pull(Entrez_ID)
-print(both_dataset_positive_FC_gene)
-print(length(both_dataset_positive_FC_gene)) # Got 5 target genes that are up-regulated
 # These 5 genes' Entrez IDs were passed in to do gene-set enrichment analysis
 # But there's no identified pathways overlapping across these genes
+
+both_mRNA_negative_inverse_genes <- intersect(both_mRNA_negative_FC_gene, positive_miRNA_targets)
+print(both_mRNA_negative_inverse_genes)
+
+# There's only one gene, so we didn't do a gene-set enrichment analysis
