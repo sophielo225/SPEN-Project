@@ -1,11 +1,7 @@
-# This file contains codes to make tables
-
-# Load all required library
 library(tidyverse)
 library(knitr)
 
 # Make tables for tsv files acquired from GSEA website
-
 # Helper function that saves tsv files as Markdown texts
 save_tsv_as_md <- function(file_path, out_dir = "tables") {
     if (!dir.exists(out_dir)) dir.create(out_dir)
@@ -39,9 +35,14 @@ save_tsv_as_md <- function(file_path, out_dir = "tables") {
     
     # Write the table into markdown text
     kable(final_table, format = "simple", digits = 30) %>%
-        writeLines(paste0(out_dir, "/", short_name, "_pathway_results.md"))
+        writeLines(paste0(out_dir, "/", short_name, "_GSEA_results.md"))
 }
 
 # Apply function to all tsv files
-tsv_files <- list.files("pathway_results", pattern = "\\.tsv$", full.names = TRUE)
+tsv_files <- list.files("GSEA_results", pattern = "\\.tsv$", full.names = TRUE)
 lapply(tsv_files, save_tsv_as_md)
+
+# Convert additional file to Markdown.
+read_tsv("gene_lists/miRNA_targets.tsv") %>%
+  kable(format = "simple") %>%
+  writeLines(paste0("tables/miRNA_targets.md"))

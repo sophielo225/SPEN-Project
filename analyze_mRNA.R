@@ -143,6 +143,16 @@ exprs_mat <- exprs_mat[!grepl("^ILMN_", rownames(exprs_mat)), ]
 group <- ifelse(grepl("^S", colnames(exprs_mat)), "tumor", "normal")
 group <- factor(group)
 
+# Save expression data
+exprs_mat %>%
+  as.data.frame() %>%
+  rownames_to_column("Entrez_Gene_ID") %>%
+  write_tsv("GSE43795_exprs.tsv.gz")
+
+# Save labels
+tibble(Sample_ID = colnames(exprs_mat, group), Label = group) %>%
+  write_tsv("GSE43795_labels.tsv.gz")
+
 # Create the design matrix
 design <- model.matrix(~0 + group)
 colnames(design) <- levels(group)
@@ -222,6 +232,12 @@ annotated_tibble <- inner_join(combined_tibble, emexp_1914_probe_annotation, joi
 annotated_expr_mat <- as.matrix(annotated_tibble %>% dplyr::select(-Entrez_ID))
 expr_gene <- avereps(annotated_expr_mat, ID = annotated_tibble$Entrez_ID)
 
+# Save expression data.
+expr_gene %>%
+  as.data.frame() %>%
+  rownames_to_column("Entrez_Gene_ID") %>%
+  write_tsv("E-MEXP-1914_exprs.tsv.gz")
+
 # Build the design matrix
 design <- model.matrix(~ 1, data = data.frame(array = colnames(expr_gene)))
 
@@ -272,14 +288,15 @@ overlapping_336_genes <- combined_681IDs %>%
 #################################
 # Map gene symbols to Entrez IDs using HGNC mappings.
 
-download.file("https://zenodo.org/records/20549560/files/HGNC_mappings.tsv.gz?download=1", "/tmp/gene_mappings.tsv.gz")
-gene_annotations <- read_tsv("/tmp/gene_mappings.tsv.gz", comment = "#") %>%
+download.file("https://zenodo.org/records/20549560/files/HGNC_mappings.tsv.gz?download=1", "gene_annotations.tsv.gz")
+gene_annotations <- read_tsv("gene_annotations.tsv.gz", comment = "#") %>%
   dplyr::rename(Entrez_Gene_ID = `NCBI gene ID`,
                 HGNC_Symbol = `Approved symbol`) %>%
   filter(!is.na(Entrez_Gene_ID)) %>%
   filter(!is.na(HGNC_Symbol)) %>%
   mutate(Entrez_Gene_ID = as.integer(Entrez_Gene_ID)) %>%
   dplyr::select(Entrez_Gene_ID, HGNC_Symbol)
+write_tsv(gene_annotations, "gene_annotations.tsv.gz")
 
 # # When running these codes, there might be connection errors occurring
 # # If this happens, try restarting R session and re-running the codes
@@ -324,14 +341,3 @@ if (!dir.exists("differential_expression_results")) {
 }
 write_tsv(gse43795_results, "differential_expression_results/gse43795_differential_expression_results.tsv", na = "NA")
 write_tsv(emexp_1914_results, "differential_expression_results/emexp_1914_differential_expression_results.tsv", na = "NA")
-
-#################################
-# Save RDS objects to be used in other files
-saveRDS(emexp_1914_significant_vec, "emexp_1914_significant_vec.rds")
-saveRDS(gse43795_significant_vec, "gse43795_significant_vec.rds")
-saveRDS(same_trend_overlapping_Entrez_ID, "same_trend_overlapping_Entrez_ID.rds")
-saveRDS(gse43795_significant, "gse43795_significant_tibble.rds")
-saveRDS(gse43795_results, "gse43795_results_tibble.rds")
-saveRDS(emexp_1914_significant, "emexp_1914_significant_tibble.rds")
-saveRDS(emexp_1914_results, "emexp_1914_results_tibble.rds")
-saveRDS(overlapping_336_genes, "overlapping_336_genes.rds")

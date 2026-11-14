@@ -4,11 +4,9 @@
 library(EnhancedVolcano)
 library(tidyverse)
 
-# Graph volcano plots for GSE43795 and E-MEXP-1914
-
 # Load RDS tibbles
-gse43795_results <- readRDS("gse43795_results_tibble.rds")
-emexp_1914_results <- readRDS("emexp_1914_results_tibble.rds")
+gse43795_results <- read_tsv("differential_expression_results/gse43795_differential_expression_results.tsv")
+emexp_1914_results <- read_tsv("differential_expression_results/emexp_1914_differential_expression_results.tsv")
 
 # Create folder for plots
 if (!dir.exists("figures")) {

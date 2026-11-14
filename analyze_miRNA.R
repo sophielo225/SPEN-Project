@@ -76,6 +76,16 @@ samples <- colnames(MA_collapse$E)
 group <- ifelse(grepl("_S-", samples), "tumor", "normal")
 group <- factor(group, levels=c("normal", "tumor"))
 
+# Save expression matrix
+MA_collapse$E %>%
+  as.data.frame() %>%
+  rownames_to_column("MIMAT_ID") %>%
+  write_tsv("GSE43796_exprs.tsv.gz")
+
+# Save labels
+tibble(Sample_ID = samples, Label = group) %>%
+  write_tsv("GSE43796_labels.tsv.gz")
+
 # Build the design matrix
 design <- model.matrix(~group)
 
@@ -167,6 +177,17 @@ gse140719_group <- ifelse(grepl("Normal", gse140719_metadata$title),
                 "normal", "tumor")
 gse140719_group <- factor(gse140719_group, levels = c("normal", "tumor"))
 
+# Save expression data.
+expr_mat_mimat %>%
+  as.data.frame() %>%
+  rownames_to_column("MIMAT_ID") %>%
+  setNames(c("MIMAT_ID", gse140719_metadata$title)) %>%
+  write_tsv("GSE140719_exprs.tsv.gz")
+
+# Save labels
+tibble(Sample_ID = gse140719_metadata$title, Label = gse140719_group) %>%
+  write_tsv("GSE140719_labels.tsv.gz")
+
 # Build the design matrix
 gse140719_design <- model.matrix(~gse140719_group)
 
@@ -221,8 +242,3 @@ if (!dir.exists("differential_expression_results")) {
 }
 write_tsv(gse43796_result, "differential_expression_results/gse43796_differential_expression_results.tsv", na = "NA")
 write_tsv(gse140719_result, "differential_expression_results/gse140719_differential_expression_results.tsv", na = "NA")
-
-# Save RDS object to be used in other files
-saveRDS(overlapping_MIMAT_ID, "overlapping_MIMAT_ID.rds")
-saveRDS(positive_FC_IDs, "positive_FC_ID.rds")
-saveRDS(negative_FC_IDs, "negative_FC_ID.rds")

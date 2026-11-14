@@ -1,0 +1,8 @@
+source("install.R")
+source("analyze_mRNA.R")
+source("analyze_miRNA.R")
+source("analyze_both.R")
+source("plot_volcanoes.R")
+source("plot_mRNA.R")
+source("plot_miRNA.R")
+source("create_tables.R")
